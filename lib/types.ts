@@ -1,4 +1,3 @@
-// Product types
 export interface Product {
   id: string
   title: string
@@ -21,10 +20,9 @@ export interface Product {
   stock_status: 'instock' | 'outofstock' | 'onbackorder'
   stock_quantity?: number
   attributes?: ProductAttribute[]
-  seo_title?: string
-  seo_description?: string
+  rating?: number
+  review_count?: number
   created_at: string
-  updated_at?: string
 }
 
 export interface ProductImage {
@@ -43,7 +41,6 @@ export interface ProductAttribute {
   visible: boolean
 }
 
-// Offer types (vendors selling products)
 export interface Offer {
   id: string
   product_id: string
@@ -56,33 +53,22 @@ export interface Offer {
   availability: 'instock' | 'outofstock' | 'preorder'
   stock_quantity?: number
   shipping_price: number
-  shipping_free_above?: number
   delivery_days: string
   is_best: boolean
-  cpc_rate: number
-  created_at: string
+  is_megabuy: boolean
+  can_add_to_cart: boolean
 }
 
-// Vendor types
 export interface Vendor {
   id: string
   company_name: string
   slug: string
-  email: string
-  phone?: string
-  website?: string
   logo_url?: string
-  description?: string
-  status: 'active' | 'pending' | 'suspended'
-  credit_balance: number
-  default_cpc: number
   rating: number
   review_count: number
   verified: boolean
-  created_at: string
 }
 
-// Category types
 export interface Category {
   id: string
   name: string
@@ -90,87 +76,9 @@ export interface Category {
   description?: string
   parent_id?: string
   image_url?: string
+  emoji?: string
   product_count: number
-  position: number
-  is_active: boolean
   children?: Category[]
-}
-
-// Brand types
-export interface Brand {
-  id: string
-  name: string
-  slug: string
-  logo_url?: string
-  description?: string
-  website?: string
-  product_count: number
-}
-
-// Feed types
-export interface Feed {
-  id: string
-  vendor_id: string
-  vendor_name?: string
-  name: string
-  url: string
-  type: 'xml' | 'csv' | 'json'
-  mapping?: Record<string, string>
-  is_active: boolean
-  schedule: string
-  last_run_at?: string
-  last_run_status?: 'success' | 'error' | 'running'
-  last_run_message?: string
-  products_imported: number
-  products_updated: number
-  products_failed: number
-  created_at: string
-}
-
-// Click tracking
-export interface Click {
-  id: string
-  offer_id: string
-  product_id: string
-  vendor_id: string
-  user_ip?: string
-  user_agent?: string
-  referer?: string
-  cpc_charged: number
-  created_at: string
-}
-
-// Dashboard stats
-export interface DashboardStats {
-  total_products: number
-  active_products: number
-  total_vendors: number
-  active_vendors: number
-  total_categories: number
-  total_clicks_today: number
-  total_clicks_month: number
-  revenue_today: number
-  revenue_month: number
-  top_products: {
-    id: string
-    title: string
-    clicks: number
-    revenue: number
-  }[]
-  top_vendors: {
-    id: string
-    name: string
-    clicks: number
-    revenue: number
-  }[]
-}
-
-// API Response types
-export interface ApiResponse<T> {
-  success: boolean
-  data?: T
-  error?: string
-  message?: string
 }
 
 export interface PaginatedResponse<T> {
