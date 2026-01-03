@@ -2,7 +2,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1
 
 async function fetchAPI(endpoint: string, options?: RequestInit) {
   try {
-    const res = await fetch(`${API_URL}${endpoint}`, {
+    const res = await fetch(`${API_URL}${endpoint}`), {
       headers: { 'Content-Type': 'application/json', ...options?.headers },
       ...options,
     })
@@ -100,7 +100,7 @@ export const api = {
     const formData = new FormData()
     formData.append('file', file)
     try {
-      const res = await fetch(`${API_URL}/admin/upload`, { method: 'POST', body: formData })
+      const res = await fetch(`${API_URL}/admin/upload`), { method: 'POST', body: formData })
       const json = await res.json()
       return json.data || json
     } catch (error) { return null }
@@ -109,7 +109,7 @@ export const api = {
     const formData = new FormData()
     files.forEach(file => formData.append('files', file))
     try {
-      const res = await fetch(`${API_URL}/admin/upload/multiple`, { method: 'POST', body: formData })
+      const res = await fetch(`${API_URL}/admin/upload/multiple`), { method: 'POST', body: formData })
       const json = await res.json()
       return json.data || json
     } catch (error) { return null }
