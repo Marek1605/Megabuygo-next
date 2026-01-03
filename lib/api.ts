@@ -1,5 +1,3 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1'
-
 async function fetchAPI(endpoint: string, options?: RequestInit) {
   try {
     const res = await fetch(`${API_URL}${endpoint}`, {
@@ -10,7 +8,12 @@ async function fetchAPI(endpoint: string, options?: RequestInit) {
       const error = await res.json().catch(() => ({ error: 'Request failed' }))
       throw new Error(error.error || 'Request failed')
     }
-    return res.json()
+    const json = await res.json()
+    // Extract data from wrapper
+    if (json.data !== undefined) {
+      return json.data
+    }
+    return json
   } catch (error) {
     console.error(`API Error [${endpoint}]:`, error)
     return null
@@ -29,7 +32,7 @@ export function formatDate(date: string | Date): string {
 }
 
 export const api = {
-  // PUBLIC
+  // PUBLIC - products returns {items, total, page}
   async getProducts(params?: { page?: number; limit?: number; search?: string; category?: string; brand?: string; min_price?: number; max_price?: number; sort?: string }) {
     const query = new URLSearchParams()
     if (params?.page) query.set('page', String(params.page))
@@ -51,7 +54,9 @@ export const api = {
     return fetchAPI(`/products?${query}`)
   },
   async getFeaturedProducts(limit: number = 8) {
-    return fetchAPI(`/products?limit=${limit}&sort=newest`)
+    const data = await fetchAPI(`/products?limit=${limit}&sort=newest`)
+    // Extract items array from response
+    return data?.items || data || []
   },
   async search(query: string, params?: { page?: number; limit?: number }) {
     const searchParams = new URLSearchParams({ search: query })
@@ -59,6 +64,7 @@ export const api = {
     if (params?.limit) searchParams.set('limit', String(params.limit))
     return fetchAPI(`/search?${searchParams}`)
   },
+  // Categories returns array directly
   async getCategories() { return fetchAPI('/categories') },
   async getCategoryTree() { return fetchAPI('/categories/tree') },
   async getCategoriesTree() { return fetchAPI('/categories/tree') },
@@ -99,7 +105,8 @@ export const api = {
     formData.append('file', file)
     try {
       const res = await fetch(`${API_URL}/admin/upload`, { method: 'POST', body: formData })
-      return res.json()
+      const json = await res.json()
+      return json.data || json
     } catch (error) { return null }
   },
   async uploadMultipleImages(files: File[]) {
@@ -107,7 +114,8 @@ export const api = {
     files.forEach(file => formData.append('files', file))
     try {
       const res = await fetch(`${API_URL}/admin/upload/multiple`, { method: 'POST', body: formData })
-      return res.json()
+      const json = await res.json()
+      return json.data || json
     } catch (error) { return null }
   },
 }
