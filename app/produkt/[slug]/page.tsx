@@ -32,7 +32,8 @@ interface Product {
 
 interface Offer {
   id: string
-  vendor_id: string
+  product_id?: string
+  vendor_id?: string
   vendor_name: string
   vendor_logo?: string
   vendor_rating: number
@@ -41,9 +42,10 @@ interface Offer {
   shipping_price: number
   delivery_days: string
   stock_status: string
-  stock_quantity: number
+  stock_quantity?: number
   is_megabuy: boolean
   affiliate_url?: string
+  created_at?: string
 }
 
 export default function ProductDetailPage() {
