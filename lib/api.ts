@@ -50,6 +50,9 @@ export const api = {
     if (params?.limit) query.set('limit', String(params.limit))
     return fetchAPI(`/products?${query}`)
   },
+  async getFeaturedProducts(limit: number = 8) {
+    return fetchAPI(`/products?limit=${limit}&sort=newest`)
+  },
   async search(query: string, params?: { page?: number; limit?: number }) {
     const searchParams = new URLSearchParams({ search: query })
     if (params?.page) searchParams.set('page', String(params.page))
