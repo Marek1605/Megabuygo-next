@@ -117,7 +117,7 @@ export default function CategoryPage({ params }: { params: Promise<{ slug: strin
       setTotalPages(data.total_pages || 1)
       
       // Extract unique brands from products
-      const uniqueBrands = [...new Set((data.items || []).map((p: Product) => p.brand).filter(Boolean))]
+      const uniqueBrands = Array.from(new Set((data.items || []).map((p: Product) => p.brand).filter(Boolean))]
       setBrands(uniqueBrands as string[])
     }
     setLoading(false)
