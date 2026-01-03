@@ -1,3 +1,5 @@
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1'
+
 async function fetchAPI(endpoint: string, options?: RequestInit) {
   try {
     const res = await fetch(`${API_URL}${endpoint}`, {
@@ -9,7 +11,6 @@ async function fetchAPI(endpoint: string, options?: RequestInit) {
       throw new Error(error.error || 'Request failed')
     }
     const json = await res.json()
-    // Extract data from wrapper
     if (json.data !== undefined) {
       return json.data
     }
@@ -32,7 +33,6 @@ export function formatDate(date: string | Date): string {
 }
 
 export const api = {
-  // PUBLIC - products returns {items, total, page}
   async getProducts(params?: { page?: number; limit?: number; search?: string; category?: string; brand?: string; min_price?: number; max_price?: number; sort?: string }) {
     const query = new URLSearchParams()
     if (params?.page) query.set('page', String(params.page))
@@ -55,7 +55,6 @@ export const api = {
   },
   async getFeaturedProducts(limit: number = 8) {
     const data = await fetchAPI(`/products?limit=${limit}&sort=newest`)
-    // Extract items array from response
     return data?.items || data || []
   },
   async search(query: string, params?: { page?: number; limit?: number }) {
@@ -64,14 +63,11 @@ export const api = {
     if (params?.limit) searchParams.set('limit', String(params.limit))
     return fetchAPI(`/search?${searchParams}`)
   },
-  // Categories returns array directly
   async getCategories() { return fetchAPI('/categories') },
   async getCategoryTree() { return fetchAPI('/categories/tree') },
   async getCategoriesTree() { return fetchAPI('/categories/tree') },
   async getCategoriesFlat() { return fetchAPI('/categories/flat') },
   async getCategoryBySlug(slug: string) { return fetchAPI(`/categories/slug/${slug}`) },
-
-  // ADMIN
   async getAdminProducts(params?: { page?: number; limit?: number; search?: string; category?: string; status?: string }) {
     const query = new URLSearchParams()
     if (params?.page) query.set('page', String(params.page))
