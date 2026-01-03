@@ -2,7 +2,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1
 
 async function fetchAPI(endpoint: string, options?: RequestInit) {
   try {
-    const res = await fetch(`${API_URL}${endpoint}`), {
+    const res = await fetch(`${API_URL}${endpoint}`, {
       headers: { 'Content-Type': 'application/json', ...options?.headers },
       ...options,
     })
@@ -81,10 +81,11 @@ export const api = {
   async createProduct(data: any) { return fetchAPI('/admin/products', { method: 'POST', body: JSON.stringify(data) }) },
   async updateProduct(id: string, data: any) { return fetchAPI(`/admin/products/${id}`, { method: 'PUT', body: JSON.stringify(data) }) },
   async deleteProduct(id: string) { return fetchAPI(`/admin/products/${id}`, { method: 'DELETE' }) },
+  async deleteAllProducts() { return fetchAPI('/admin/products/all', { method: 'DELETE' }) },
   async bulkUpdateProducts(ids: string[], action: 'activate' | 'deactivate' | 'delete') {
     return fetchAPI('/admin/products/bulk', { method: 'POST', body: JSON.stringify({ ids, action }) })
   },
-  async syncProductsToES() { return fetchAPI('/admin/products/sync-es', { method: 'POST' }) },
+  async syncProductsToES() { return fetchAPI('/admin/sync-elasticsearch', { method: 'POST' }) },
   async getCategory(id: string) { return fetchAPI(`/admin/categories/${id}`) },
   async createCategory(data: any) { return fetchAPI('/admin/categories', { method: 'POST', body: JSON.stringify(data) }) },
   async updateCategory(id: string, data: any) { return fetchAPI(`/admin/categories/${id}`, { method: 'PUT', body: JSON.stringify(data) }) },
@@ -100,16 +101,7 @@ export const api = {
     const formData = new FormData()
     formData.append('file', file)
     try {
-      const res = await fetch(`${API_URL}/admin/upload`), { method: 'POST', body: formData })
-      const json = await res.json()
-      return json.data || json
-    } catch (error) { return null }
-  },
-  async uploadMultipleImages(files: File[]) {
-    const formData = new FormData()
-    files.forEach(file => formData.append('files', file))
-    try {
-      const res = await fetch(`${API_URL}/admin/upload/multiple`), { method: 'POST', body: formData })
+      const res = await fetch(`${API_URL}/admin/upload`, { method: 'POST', body: formData })
       const json = await res.json()
       return json.data || json
     } catch (error) { return null }
