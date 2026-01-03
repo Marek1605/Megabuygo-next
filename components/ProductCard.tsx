@@ -4,7 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { Heart, ExternalLink, TrendingDown, Star } from "lucide-react"
 import { formatPrice } from "@/lib/utils"
-import type { Product } from "@/lib/api"
+import type { Product } from "@/lib/types"
 
 interface ProductCardProps {
   product: Product
