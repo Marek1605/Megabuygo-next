@@ -1,976 +1,525 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { useRouter, useParams } from 'next/navigation'
-import { api } from '@/lib/api'
+import { useState, useEffect, use } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { api, formatPrice } from '@/lib/api'
 
-interface ProductImage {
-  id?: string
-  url: string
-  alt?: string
-  position?: number
-  is_main: boolean
+interface Product {
+  id: string
+  title: string
+  slug: string
+  description?: string
+  short_description?: string
+  ean?: string
+  sku?: string
+  brand?: string
+  image_url?: string
+  images?: string[]
+  affiliate_url?: string
+  category_id?: string
+  price_min: number
+  price_max: number
+  stock_status: string
+  is_active: boolean
+  is_featured: boolean
+  meta_title?: string
+  meta_description?: string
 }
 
-interface ProductAttribute {
-  id?: string
-  name: string
-  value: string
-  position?: number
-}
-
-interface CategoryOption {
+interface Category {
   id: string
   name: string
-  depth: number
-  path: string
+  slug: string
+  parent_id?: string
 }
 
-export default function EditProductPage() {
+export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
   const router = useRouter()
-  const params = useParams()
-  const productId = params.id as string
-  
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [uploading, setUploading] = useState(false)
-  const [activeTab, setActiveTab] = useState<'basic' | 'media' | 'attributes' | 'seo'>('basic')
-  const [categories, setCategories] = useState<CategoryOption[]>([])
-  const [images, setImages] = useState<ProductImage[]>([])
-  const [attributes, setAttributes] = useState<ProductAttribute[]>([])
-  const [originalProduct, setOriginalProduct] = useState<any>(null)
+  const [categories, setCategories] = useState<Category[]>([])
+  const [activeTab, setActiveTab] = useState('basic')
+  const [uploadingImages, setUploadingImages] = useState(false)
   
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const dropZoneRef = useRef<HTMLDivElement>(null)
-  
-  const [form, setForm] = useState({
+  const [product, setProduct] = useState<Product>({
+    id: '',
     title: '',
     slug: '',
     description: '',
     short_description: '',
     ean: '',
     sku: '',
-    mpn: '',
-    brand_name: '',
+    brand: '',
+    image_url: '',
+    images: [],
+    affiliate_url: '',
     category_id: '',
     price_min: 0,
     price_max: 0,
-    stock_status: 'instock' as 'instock' | 'outofstock' | 'onbackorder',
-    stock_quantity: 0,
+    stock_status: 'instock',
     is_active: true,
     is_featured: false,
-    seo_title: '',
-    seo_description: '',
+    meta_title: '',
+    meta_description: ''
   })
 
   useEffect(() => {
-    loadData()
-  }, [productId])
+    loadProduct()
+    loadCategories()
+  }, [id])
 
-  async function loadData() {
+  async function loadProduct() {
     setLoading(true)
-    
-    // Load categories
-    const cats = await api.getCategoriesFlat()
-    if (cats) {
-      setCategories(cats)
-    }
-
-    // Load product
-    const product = await api.getProduct(productId)
-    if (product) {
-      setOriginalProduct(product)
-      setForm({
-        title: product.title || '',
-        slug: product.slug || '',
-        description: product.description || '',
-        short_description: product.short_description || '',
-        ean: product.ean || '',
-        sku: product.sku || '',
-        mpn: product.mpn || '',
-        brand_name: product.brand || product.brand_name || '',
-        category_id: product.category_id || '',
-        price_min: product.price_min || 0,
-        price_max: product.price_max || 0,
-        stock_status: product.stock_status || 'instock',
-        stock_quantity: product.stock_quantity || 0,
-        is_active: product.is_active !== false,
-        is_featured: product.is_featured === true,
-        seo_title: product.meta_title || product.seo_title || '',
-        seo_description: product.meta_description || product.seo_description || '',
+    const data = await api.getProduct(id)
+    if (data) {
+      setProduct({
+        ...data,
+        images: data.images || []
       })
-      
-      // Load images
-      if (product.images && Array.isArray(product.images)) {
-        setImages(product.images.map((img: any, index: number) => ({
-          id: img.id || `img-${index}`,
-          url: img.url,
-          alt: img.alt || '',
-          position: img.position ?? index,
-          is_main: img.is_main === true || index === 0
-        })))
-      } else if (product.image_url) {
-        setImages([{ id: 'main', url: product.image_url, alt: '', position: 0, is_main: true }])
-      }
-      
-      // Load attributes
-      if (product.attributes && Array.isArray(product.attributes)) {
-        setAttributes(product.attributes.map((attr: any, index: number) => ({
-          id: attr.id || `attr-${index}`,
-          name: attr.name,
-          value: attr.value,
-          position: attr.position ?? index
-        })))
-      }
     }
-    
     setLoading(false)
   }
 
-  const generateSlug = (title: string) => {
-    return title
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '')
-  }
-
-  // ========== IMAGE HANDLING ==========
-  const handleFileSelect = async (files: FileList | null) => {
-    if (!files || files.length === 0) return
-    
-    setUploading(true)
-    try {
-      const newImages: ProductImage[] = []
-      
-      for (let i = 0; i < files.length; i++) {
-        const result = await api.uploadImage(files[i])
-        if (result && result.url) {
-          newImages.push({
-            id: result.filename || `new-${Date.now()}-${i}`,
-            url: result.url,
-            alt: '',
-            position: images.length + i,
-            is_main: images.length === 0 && i === 0
-          })
-        }
-      }
-      
-      setImages(prev => {
-        const updated = [...prev, ...newImages]
-        // Ensure at least one is main
-        if (!updated.some(img => img.is_main) && updated.length > 0) {
-          updated[0].is_main = true
-        }
-        return updated
-      })
-    } catch (error) {
-      console.error('Upload error:', error)
-      alert('Chyba pri nahrávaní obrázkov')
+  async function loadCategories() {
+    const cats = await api.getCategoriesFlat()
+    if (cats && Array.isArray(cats)) {
+      setCategories(cats)
     }
-    setUploading(false)
   }
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    dropZoneRef.current?.classList.remove('drag-over')
-    handleFileSelect(e.dataTransfer.files)
-  }
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    dropZoneRef.current?.classList.add('drag-over')
-  }
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    dropZoneRef.current?.classList.remove('drag-over')
-  }
-
-  const removeImage = (imageId: string) => {
-    setImages(prev => {
-      const filtered = prev.filter(img => img.id !== imageId)
-      if (filtered.length > 0 && !filtered.some(img => img.is_main)) {
-        filtered[0].is_main = true
-      }
-      return filtered
-    })
-  }
-
-  const setMainImage = (imageId: string) => {
-    setImages(prev => prev.map(img => ({
-      ...img,
-      is_main: img.id === imageId
-    })))
-  }
-
-  const moveImage = (imageId: string, direction: 'up' | 'down') => {
-    setImages(prev => {
-      const index = prev.findIndex(img => img.id === imageId)
-      if (index === -1) return prev
-      
-      const newIndex = direction === 'up' ? index - 1 : index + 1
-      if (newIndex < 0 || newIndex >= prev.length) return prev
-      
-      const newImages = [...prev]
-      ;[newImages[index], newImages[newIndex]] = [newImages[newIndex], newImages[index]]
-      return newImages.map((img, i) => ({ ...img, position: i }))
-    })
-  }
-
-  // ========== ATTRIBUTES HANDLING ==========
-  const addAttribute = () => {
-    setAttributes(prev => [...prev, { 
-      id: `new-${Date.now()}`,
-      name: '', 
-      value: '',
-      position: prev.length
-    }])
-  }
-
-  const updateAttribute = (index: number, field: 'name' | 'value', value: string) => {
-    setAttributes(prev => prev.map((attr, i) => 
-      i === index ? { ...attr, [field]: value } : attr
-    ))
-  }
-
-  const removeAttribute = (index: number) => {
-    setAttributes(prev => prev.filter((_, i) => i !== index))
-  }
-
-  // ========== SUBMIT ==========
-  const handleSubmit = async (e: React.FormEvent) => {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
     
-    try {
-      const productData = {
-        ...form,
-        image_url: images.find(img => img.is_main)?.url || images[0]?.url || '',
-        images: images.map((img, index) => ({
-          url: img.url,
-          alt: img.alt || '',
-          position: index,
-          is_main: img.is_main
-        })),
-        attributes: attributes
-          .filter(a => a.name && a.value)
-          .map((a, index) => ({
-            name: a.name,
-            value: a.value,
-            position: index
-          })),
-      }
-      
-      const result = await api.updateProduct(productId, productData)
-      if (result) {
-        router.push('/admin/products')
-      } else {
-        alert('Chyba pri ukladaní produktu')
-      }
-    } catch (error) {
-      console.error('Error:', error)
+    const result = await api.updateProduct(id, product)
+    if (result) {
+      alert('Produkt bol uložený!')
+    } else {
       alert('Chyba pri ukladaní produktu')
     }
-    
     setSaving(false)
   }
 
-  const handleDelete = async () => {
-    if (!confirm('Naozaj chcete vymazať tento produkt? Táto akcia je nevratná.')) {
-      return
-    }
+  async function handleDelete() {
+    if (!confirm('Naozaj chcete vymazať tento produkt?')) return
     
-    try {
-      await api.deleteProduct(productId)
+    const result = await api.deleteProduct(id)
+    if (result) {
       router.push('/admin/products')
-    } catch (error) {
+    } else {
       alert('Chyba pri mazaní produktu')
     }
   }
 
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    setUploadingImages(true)
+    
+    for (let i = 0; i < files.length; i++) {
+      const result = await api.uploadImage(files[i])
+      if (result?.url) {
+        if (!product.image_url) {
+          // First image becomes main image
+          setProduct(prev => ({ ...prev, image_url: result.url }))
+        } else {
+          // Add to gallery
+          setProduct(prev => ({ 
+            ...prev, 
+            images: [...(prev.images || []), result.url] 
+          }))
+        }
+      }
+    }
+    
+    setUploadingImages(false)
+  }
+
+  function removeImage(index: number) {
+    if (index === -1) {
+      // Remove main image, promote first gallery image
+      const newImages = [...(product.images || [])]
+      const newMain = newImages.shift() || ''
+      setProduct(prev => ({
+        ...prev,
+        image_url: newMain,
+        images: newImages
+      }))
+    } else {
+      // Remove from gallery
+      setProduct(prev => ({
+        ...prev,
+        images: (prev.images || []).filter((_, i) => i !== index)
+      }))
+    }
+  }
+
+  function setAsMainImage(index: number) {
+    const newImages = [...(product.images || [])]
+    const newMain = newImages[index]
+    newImages.splice(index, 1)
+    if (product.image_url) {
+      newImages.unshift(product.image_url)
+    }
+    setProduct(prev => ({
+      ...prev,
+      image_url: newMain,
+      images: newImages
+    }))
+  }
+
+  // All images including main
+  const allImages = [product.image_url, ...(product.images || [])].filter(Boolean) as string[]
+
   if (loading) {
     return (
-      <div style={{textAlign:'center',padding:60}}>
-        <div className="spinner"></div>
-        <p style={{marginTop: 16, color: '#6b7280'}}>Načítavam produkt...</p>
+      <div style={{ padding: 40, textAlign: 'center' }}>
+        <p>Načítavam produkt...</p>
       </div>
     )
   }
 
   return (
-    <div>
-      <style jsx>{`
-        .image-dropzone {
-          border: 2px dashed #d1d5db;
-          border-radius: 12px;
-          padding: 40px;
-          text-align: center;
-          background: #f9fafb;
-          transition: all 0.2s;
-          cursor: pointer;
-        }
-        .image-dropzone:hover, .image-dropzone.drag-over {
-          border-color: #ff6b35;
-          background: #fff5f0;
-        }
-        .image-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-          gap: 16px;
-          margin-top: 20px;
-        }
-        .image-item {
-          position: relative;
-          border-radius: 8px;
-          overflow: hidden;
-          background: #f3f4f6;
-          aspect-ratio: 1;
-          border: 2px solid transparent;
-        }
-        .image-item.is-main {
-          border-color: #ff6b35;
-        }
-        .image-item img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-        .image-item-overlay {
-          position: absolute;
-          inset: 0;
-          background: rgba(0,0,0,0.6);
-          opacity: 0;
-          transition: opacity 0.2s;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          padding: 12px;
-        }
-        .image-item:hover .image-item-overlay {
-          opacity: 1;
-        }
-        .image-item-btn {
-          background: white;
-          border: none;
-          border-radius: 6px;
-          padding: 6px 12px;
-          font-size: 12px;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          transition: all 0.15s;
-        }
-        .image-item-btn:hover {
-          background: #f3f4f6;
-        }
-        .image-item-btn.main {
-          background: #ff6b35;
-          color: white;
-        }
-        .image-item-btn.main:hover {
-          background: #e55a2b;
-        }
-        .image-item-btn.delete {
-          background: #fee2e2;
-          color: #dc2626;
-        }
-        .image-item-btn.delete:hover {
-          background: #fecaca;
-        }
-        .image-main-badge {
-          position: absolute;
-          top: 8px;
-          left: 8px;
-          background: #ff6b35;
-          color: white;
-          padding: 4px 10px;
-          border-radius: 4px;
-          font-size: 11px;
-          font-weight: 600;
-        }
-        .attribute-row {
-          display: grid;
-          grid-template-columns: 1fr 1fr auto;
-          gap: 12px;
-          margin-bottom: 12px;
-          align-items: start;
-        }
-        .attribute-remove {
-          background: #fee2e2;
-          color: #dc2626;
-          border: none;
-          border-radius: 6px;
-          width: 36px;
-          height: 36px;
-          cursor: pointer;
-          font-size: 16px;
-          margin-top: 2px;
-        }
-        .attribute-remove:hover {
-          background: #fecaca;
-        }
-        .spinner {
-          width: 40px;
-          height: 40px;
-          border: 3px solid #f3f4f6;
-          border-top-color: #ff6b35;
-          border-radius: 50%;
-          animation: spin 0.8s linear infinite;
-          margin: 0 auto;
-        }
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-        .upload-progress {
-          background: #fff5f0;
-          border: 1px solid #ff6b35;
-          border-radius: 8px;
-          padding: 16px;
-          margin-top: 16px;
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
-        .category-select {
-          max-height: 200px;
-          overflow-y: auto;
-        }
+    <>
+      <style jsx global>{`
+        .edit-page { padding: 24px; max-width: 1200px; margin: 0 auto; }
+        .edit-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .edit-title { font-size: 24px; font-weight: 700; color: #1f2937; margin: 0; }
+        .edit-actions { display: flex; gap: 12px; }
+        .btn { padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
+        .btn-danger { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+        .btn-danger:hover { background: #dc2626; color: #fff; }
+        .btn-secondary { background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; }
+        .btn-secondary:hover { border-color: #9ca3af; }
+        .btn-primary { background: linear-gradient(135deg, #c9a87c, #b8956e); color: #fff; border: none; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(201,168,124,0.3); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        /* Tabs */
+        .tabs { display: flex; gap: 4px; margin-bottom: 24px; background: #f3f4f6; padding: 4px; border-radius: 12px; }
+        .tab { padding: 12px 20px; background: transparent; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; color: #6b7280; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+        .tab:hover { color: #374151; }
+        .tab.active { background: #fff; color: #c9a87c; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        
+        /* Form */
+        .form-card { background: #fff; border-radius: 16px; padding: 24px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group.full { grid-column: 1 / -1; }
+        .form-label { display: block; font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 8px; }
+        .form-input { width: 100%; padding: 12px 16px; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 14px; transition: all 0.2s; }
+        .form-input:focus { outline: none; border-color: #c9a87c; box-shadow: 0 0 0 3px rgba(201,168,124,0.1); }
+        .form-textarea { min-height: 150px; resize: vertical; }
+        .form-select { appearance: none; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L2 4h8z'/%3E%3C/svg%3E") no-repeat right 16px center; padding-right: 40px; }
+        .form-checkbox { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+        .form-checkbox input { width: 20px; height: 20px; accent-color: #c9a87c; }
+        
+        /* Images */
+        .images-section { }
+        .images-upload { border: 2px dashed #e5e7eb; border-radius: 16px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.2s; margin-bottom: 24px; }
+        .images-upload:hover { border-color: #c9a87c; background: #faf8f5; }
+        .images-upload-icon { font-size: 48px; margin-bottom: 12px; }
+        .images-upload-text { font-size: 14px; color: #6b7280; }
+        .images-upload-formats { font-size: 12px; color: #9ca3af; margin-top: 8px; }
+        .images-upload input { display: none; }
+        
+        .images-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
+        .image-item { position: relative; aspect-ratio: 1; border-radius: 12px; overflow: hidden; background: #f9fafb; }
+        .image-item img { width: 100%; height: 100%; object-fit: cover; }
+        .image-item.main { border: 3px solid #c9a87c; }
+        .image-badge { position: absolute; top: 8px; left: 8px; padding: 4px 8px; background: #c9a87c; color: #fff; font-size: 11px; font-weight: 600; border-radius: 6px; }
+        .image-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; }
+        .image-btn { width: 28px; height: 28px; border-radius: 6px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+        .image-btn-main { background: #fff; color: #c9a87c; }
+        .image-btn-delete { background: #fff; color: #dc2626; }
+        .image-btn:hover { transform: scale(1.1); }
+        
+        .no-images { text-align: center; padding: 40px; color: #9ca3af; }
+        .no-images-icon { font-size: 48px; margin-bottom: 12px; }
       `}</style>
 
-      <div className="admin-header">
-        <div>
-          <h1 className="admin-title">Upraviť produkt</h1>
-          {originalProduct && (
-            <p style={{color: '#6b7280', fontSize: 14, marginTop: 4}}>
-              ID: {productId}
-            </p>
-          )}
-        </div>
-        <div style={{display:'flex',gap:12}}>
-          <button 
-            type="button" 
-            onClick={handleDelete} 
-            className="admin-btn"
-            style={{background: '#fee2e2', color: '#dc2626'}}
-          >
-            🗑️ Vymazať
-          </button>
-          <button type="button" onClick={() => router.back()} className="admin-btn admin-btn-outline">
-            ← Späť
-          </button>
-          <button type="submit" form="product-form" className="admin-btn" disabled={saving}>
-            {saving ? 'Ukladám...' : '💾 Uložiť zmeny'}
-          </button>
-        </div>
-      </div>
-
-      <form id="product-form" onSubmit={handleSubmit}>
-        <div className="admin-card">
-          <div className="admin-tabs">
-            {[
-              { id: 'basic', label: '📝 Základné info', count: null },
-              { id: 'media', label: '🖼️ Obrázky', count: images.length },
-              { id: 'attributes', label: '📊 Atribúty', count: attributes.filter(a => a.name && a.value).length },
-              { id: 'seo', label: '🔍 SEO', count: null },
-            ].map(tab => (
-              <button
-                key={tab.id}
-                type="button"
-                className={`admin-tab ${activeTab === tab.id ? 'active' : ''}`}
-                onClick={() => setActiveTab(tab.id as any)}
-              >
-                {tab.label}
-                {tab.count !== null && tab.count > 0 && (
-                  <span style={{
-                    marginLeft: 6,
-                    background: activeTab === tab.id ? '#ff6b35' : '#e5e7eb',
-                    color: activeTab === tab.id ? 'white' : '#6b7280',
-                    padding: '2px 8px',
-                    borderRadius: 10,
-                    fontSize: 11
-                  }}>
-                    {tab.count}
-                  </span>
-                )}
-              </button>
-            ))}
+      <div className="edit-page">
+        <div className="edit-header">
+          <h1 className="edit-title">Upraviť produkt</h1>
+          <div className="edit-actions">
+            <button className="btn btn-danger" onClick={handleDelete}>🗑️ Vymazať</button>
+            <Link href="/admin/products" className="btn btn-secondary">← Späť</Link>
+            <button className="btn btn-primary" onClick={handleSubmit} disabled={saving}>
+              {saving ? '⏳ Ukladám...' : '💾 Uložiť zmeny'}
+            </button>
           </div>
+        </div>
 
-          <div className="admin-card-body">
-            {/* ========== BASIC INFO TAB ========== */}
-            {activeTab === 'basic' && (
-              <div className="admin-grid admin-grid-2">
-                <div>
-                  <div className="admin-form-group">
-                    <label className="admin-label">Názov produktu *</label>
-                    <input
-                      type="text"
-                      className="admin-input"
-                      value={form.title}
-                      onChange={e => {
-                        const title = e.target.value
-                        setForm(f => ({ 
-                          ...f, 
-                          title,
-                          slug: f.slug || generateSlug(title)
-                        }))
-                      }}
-                      placeholder="iPhone 15 Pro Max 256GB"
-                      required
-                    />
-                  </div>
+        {/* Tabs */}
+        <div className="tabs">
+          <button className={`tab ${activeTab === 'basic' ? 'active' : ''}`} onClick={() => setActiveTab('basic')}>
+            📝 Základné info
+          </button>
+          <button className={`tab ${activeTab === 'images' ? 'active' : ''}`} onClick={() => setActiveTab('images')}>
+            🖼️ Obrázky ({allImages.length})
+          </button>
+          <button className={`tab ${activeTab === 'attributes' ? 'active' : ''}`} onClick={() => setActiveTab('attributes')}>
+            📊 Atribúty
+          </button>
+          <button className={`tab ${activeTab === 'seo' ? 'active' : ''}`} onClick={() => setActiveTab('seo')}>
+            🔍 SEO
+          </button>
+        </div>
 
-                  <div className="admin-form-group">
-                    <label className="admin-label">URL slug</label>
-                    <input
-                      type="text"
-                      className="admin-input"
-                      value={form.slug}
-                      onChange={e => setForm(f => ({ ...f, slug: e.target.value }))}
-                      placeholder="iphone-15-pro-max-256gb"
-                    />
-                    <small style={{color: '#9ca3af'}}>megabuy.sk/produkt/{form.slug || 'url-produktu'}</small>
-                  </div>
-
-                  <div className="admin-form-group">
-                    <label className="admin-label">Kategória</label>
-                    <select 
-                      className="admin-select"
-                      value={form.category_id}
-                      onChange={e => setForm(f => ({ ...f, category_id: e.target.value }))}
-                    >
-                      <option value="">-- Vyberte kategóriu --</option>
-                      {categories.map(cat => (
-                        <option key={cat.id} value={cat.id}>
-                          {'  '.repeat(cat.depth)}{cat.depth > 0 ? '└ ' : ''}{cat.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="admin-form-group">
-                    <label className="admin-label">Značka</label>
-                    <input
-                      type="text"
-                      className="admin-input"
-                      value={form.brand_name}
-                      onChange={e => setForm(f => ({ ...f, brand_name: e.target.value }))}
-                      placeholder="Apple"
-                    />
-                  </div>
-
-                  <div className="admin-form-group">
-                    <label className="admin-label">Krátky popis</label>
-                    <textarea
-                      className="admin-textarea"
-                      value={form.short_description}
-                      onChange={e => setForm(f => ({ ...f, short_description: e.target.value }))}
-                      rows={3}
-                      placeholder="Stručný popis produktu pre náhľad..."
-                    />
-                  </div>
-
-                  <div className="admin-form-group">
-                    <label className="admin-label">Detailný popis</label>
-                    <textarea
-                      className="admin-textarea"
-                      value={form.description}
-                      onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                      rows={8}
-                      placeholder="Kompletný popis produktu s technickými parametrami..."
-                    />
-                  </div>
+        <form onSubmit={handleSubmit}>
+          {/* Basic Info Tab */}
+          {activeTab === 'basic' && (
+            <div className="form-card">
+              <div className="form-grid">
+                <div className="form-group full">
+                  <label className="form-label">Názov produktu *</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={product.title}
+                    onChange={e => setProduct(prev => ({ ...prev, title: e.target.value }))}
+                    required
+                  />
                 </div>
 
-                <div>
-                  <div className="admin-grid admin-grid-3" style={{marginBottom: 16}}>
-                    <div className="admin-form-group">
-                      <label className="admin-label">EAN</label>
-                      <input
-                        type="text"
-                        className="admin-input"
-                        value={form.ean}
-                        onChange={e => setForm(f => ({ ...f, ean: e.target.value }))}
-                        placeholder="8596311123456"
-                      />
-                    </div>
-                    <div className="admin-form-group">
-                      <label className="admin-label">SKU</label>
-                      <input
-                        type="text"
-                        className="admin-input"
-                        value={form.sku}
-                        onChange={e => setForm(f => ({ ...f, sku: e.target.value }))}
-                        placeholder="APPL-IPH15-256"
-                      />
-                    </div>
-                    <div className="admin-form-group">
-                      <label className="admin-label">MPN</label>
-                      <input
-                        type="text"
-                        className="admin-input"
-                        value={form.mpn}
-                        onChange={e => setForm(f => ({ ...f, mpn: e.target.value }))}
-                        placeholder="MU793"
-                      />
-                    </div>
-                  </div>
+                <div className="form-group">
+                  <label className="form-label">Kategória</label>
+                  <select
+                    className="form-input form-select"
+                    value={product.category_id || ''}
+                    onChange={e => setProduct(prev => ({ ...prev, category_id: e.target.value }))}
+                  >
+                    <option value="">-- Vybrať kategóriu --</option>
+                    {categories.map(cat => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </select>
+                </div>
 
-                  <div className="admin-grid admin-grid-2" style={{marginBottom: 16}}>
-                    <div className="admin-form-group">
-                      <label className="admin-label">Cena od (€) *</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        className="admin-input"
-                        value={form.price_min || ''}
-                        onChange={e => setForm(f => ({ ...f, price_min: parseFloat(e.target.value) || 0 }))}
-                        placeholder="999.00"
-                        required
-                      />
-                    </div>
-                    <div className="admin-form-group">
-                      <label className="admin-label">Cena do (€)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        className="admin-input"
-                        value={form.price_max || ''}
-                        onChange={e => setForm(f => ({ ...f, price_max: parseFloat(e.target.value) || 0 }))}
-                        placeholder="1299.00"
-                      />
-                    </div>
-                  </div>
+                <div className="form-group">
+                  <label className="form-label">Značka</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={product.brand || ''}
+                    onChange={e => setProduct(prev => ({ ...prev, brand: e.target.value }))}
+                  />
+                </div>
 
-                  <div className="admin-grid admin-grid-2" style={{marginBottom: 16}}>
-                    <div className="admin-form-group">
-                      <label className="admin-label">Stav skladu</label>
-                      <select 
-                        className="admin-select" 
-                        value={form.stock_status} 
-                        onChange={e => setForm(f => ({ ...f, stock_status: e.target.value as any }))}
-                      >
-                        <option value="instock">✅ Skladom</option>
-                        <option value="outofstock">❌ Nedostupné</option>
-                        <option value="onbackorder">📦 Na objednávku</option>
-                      </select>
-                    </div>
-                    <div className="admin-form-group">
-                      <label className="admin-label">Počet kusov</label>
-                      <input
-                        type="number"
-                        min="0"
-                        className="admin-input"
-                        value={form.stock_quantity}
-                        onChange={e => setForm(f => ({ ...f, stock_quantity: parseInt(e.target.value) || 0 }))}
-                      />
-                    </div>
-                  </div>
+                <div className="form-group">
+                  <label className="form-label">Cena od (€)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="form-input"
+                    value={product.price_min}
+                    onChange={e => setProduct(prev => ({ ...prev, price_min: parseFloat(e.target.value) || 0 }))}
+                  />
+                </div>
 
-                  <div style={{
-                    background: '#f9fafb',
-                    borderRadius: 8,
-                    padding: 16,
-                    marginTop: 20
-                  }}>
-                    <div className="admin-form-group" style={{marginBottom: 12}}>
-                      <label style={{display:'flex',alignItems:'center',gap:10,cursor:'pointer'}}>
-                        <input
-                          type="checkbox"
-                          checked={form.is_active}
-                          onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))}
-                          style={{width:20,height:20,accentColor:'#22c55e'}}
-                        />
-                        <span style={{fontWeight:500}}>✅ Aktívny produkt</span>
-                      </label>
-                      <small style={{color: '#6b7280', marginLeft: 30}}>
-                        Produkt bude viditeľný na webe
-                      </small>
-                    </div>
+                <div className="form-group">
+                  <label className="form-label">Cena do (€)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="form-input"
+                    value={product.price_max}
+                    onChange={e => setProduct(prev => ({ ...prev, price_max: parseFloat(e.target.value) || 0 }))}
+                  />
+                </div>
 
-                    <div className="admin-form-group" style={{margin:0}}>
-                      <label style={{display:'flex',alignItems:'center',gap:10,cursor:'pointer'}}>
-                        <input
-                          type="checkbox"
-                          checked={form.is_featured}
-                          onChange={e => setForm(f => ({ ...f, is_featured: e.target.checked }))}
-                          style={{width:20,height:20,accentColor:'#ff6b35'}}
-                        />
-                        <span style={{fontWeight:500}}>⭐ Odporúčaný produkt</span>
-                      </label>
-                      <small style={{color: '#6b7280', marginLeft: 30}}>
-                        Zobrazí sa na homepage medzi odporúčanými
-                      </small>
-                    </div>
-                  </div>
+                <div className="form-group full">
+                  <label className="form-label">Krátky popis</label>
+                  <textarea
+                    className="form-input form-textarea"
+                    rows={3}
+                    value={product.short_description || ''}
+                    onChange={e => setProduct(prev => ({ ...prev, short_description: e.target.value }))}
+                  />
+                </div>
+
+                <div className="form-group full">
+                  <label className="form-label">Popis</label>
+                  <textarea
+                    className="form-input form-textarea"
+                    rows={6}
+                    value={product.description || ''}
+                    onChange={e => setProduct(prev => ({ ...prev, description: e.target.value }))}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Affiliate URL</label>
+                  <input
+                    type="url"
+                    className="form-input"
+                    value={product.affiliate_url || ''}
+                    onChange={e => setProduct(prev => ({ ...prev, affiliate_url: e.target.value }))}
+                    placeholder="https://..."
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Stav skladu</label>
+                  <select
+                    className="form-input form-select"
+                    value={product.stock_status}
+                    onChange={e => setProduct(prev => ({ ...prev, stock_status: e.target.value }))}
+                  >
+                    <option value="instock">Skladom</option>
+                    <option value="outofstock">Vypredané</option>
+                    <option value="onbackorder">Na objednávku</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={product.is_active}
+                      onChange={e => setProduct(prev => ({ ...prev, is_active: e.target.checked }))}
+                    />
+                    Aktívny produkt
+                  </label>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={product.is_featured}
+                      onChange={e => setProduct(prev => ({ ...prev, is_featured: e.target.checked }))}
+                    />
+                    Odporúčaný produkt
+                  </label>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {/* ========== MEDIA TAB ========== */}
-            {activeTab === 'media' && (
-              <div>
-                <div 
-                  ref={dropZoneRef}
-                  className="image-dropzone"
-                  onClick={() => fileInputRef.current?.click()}
-                  onDrop={handleDrop}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                >
-                  <div style={{fontSize: 48, marginBottom: 12}}>📷</div>
-                  <p style={{color: '#374151', fontWeight: 500, marginBottom: 8}}>
-                    Pretiahnite obrázky sem alebo kliknite pre nahratie
-                  </p>
-                  <p style={{color: '#9ca3af', fontSize: 13}}>
-                    Podporované formáty: JPG, PNG, WebP, GIF (max 10MB)
-                  </p>
-                </div>
-                
-                <input 
-                  ref={fileInputRef}
-                  type="file" 
-                  accept="image/*" 
-                  multiple 
-                  style={{display: 'none'}}
-                  onChange={(e) => handleFileSelect(e.target.files)}
-                />
-
-                {uploading && (
-                  <div className="upload-progress">
-                    <div className="spinner" style={{width: 24, height: 24}}></div>
-                    <span>Nahrávam obrázky...</span>
+          {/* Images Tab */}
+          {activeTab === 'images' && (
+            <div className="form-card">
+              <div className="images-section">
+                {/* Upload Area */}
+                <label className="images-upload">
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    multiple 
+                    onChange={handleImageUpload}
+                    disabled={uploadingImages}
+                  />
+                  <div className="images-upload-icon">📷</div>
+                  <div className="images-upload-text">
+                    {uploadingImages ? 'Nahrávam...' : 'Pretiahnite obrázky sem alebo kliknite pre nahratie'}
                   </div>
-                )}
+                  <div className="images-upload-formats">Podporované formáty: JPG, PNG, WebP, GIF (max 10MB)</div>
+                </label>
 
-                {images.length > 0 && (
-                  <>
-                    <div style={{
-                      marginTop: 20,
-                      padding: '12px 16px',
-                      background: '#f0f9ff',
-                      borderRadius: 8,
-                      color: '#0369a1',
-                      fontSize: 14
-                    }}>
-                      💡 Tip: Prvý obrázok (alebo označený ako hlavný) sa zobrazí v katalógu produktov
-                    </div>
-                    
-                    <div className="image-grid">
-                      {images.map((image, index) => (
-                        <div key={image.id} className={`image-item ${image.is_main ? 'is-main' : ''}`}>
-                          <img src={image.url} alt={image.alt || ''} />
-                          {image.is_main && (
-                            <span className="image-main-badge">⭐ Hlavný</span>
-                          )}
-                          <div className="image-item-overlay">
-                            {!image.is_main && (
-                              <button 
-                                type="button"
-                                className="image-item-btn main"
-                                onClick={() => setMainImage(image.id!)}
-                              >
-                                ⭐ Nastaviť hlavný
-                              </button>
-                            )}
-                            <div style={{display: 'flex', gap: 4}}>
-                              <button 
-                                type="button"
-                                className="image-item-btn"
-                                onClick={() => moveImage(image.id!, 'up')}
-                                disabled={index === 0}
-                                style={{opacity: index === 0 ? 0.5 : 1}}
-                              >
-                                ↑
-                              </button>
-                              <button 
-                                type="button"
-                                className="image-item-btn"
-                                onClick={() => moveImage(image.id!, 'down')}
-                                disabled={index === images.length - 1}
-                                style={{opacity: index === images.length - 1 ? 0.5 : 1}}
-                              >
-                                ↓
-                              </button>
-                            </div>
-                            <button 
-                              type="button"
-                              className="image-item-btn delete"
-                              onClick={() => removeImage(image.id!)}
-                            >
-                              🗑️ Odstrániť
-                            </button>
-                          </div>
+                {/* Images Grid */}
+                {allImages.length > 0 ? (
+                  <div className="images-grid">
+                    {/* Main Image */}
+                    {product.image_url && (
+                      <div className="image-item main">
+                        <img src={product.image_url} alt="Hlavný obrázok" />
+                        <span className="image-badge">Hlavný</span>
+                        <div className="image-actions">
+                          <button type="button" className="image-btn image-btn-delete" onClick={() => removeImage(-1)}>×</button>
                         </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-
-                {images.length === 0 && !uploading && (
-                  <div style={{
-                    marginTop: 20,
-                    padding: 40,
-                    textAlign: 'center',
-                    color: '#9ca3af'
-                  }}>
-                    <div style={{fontSize: 40, marginBottom: 12}}>🖼️</div>
+                      </div>
+                    )}
+                    
+                    {/* Gallery Images */}
+                    {(product.images || []).map((img, index) => (
+                      <div key={index} className="image-item">
+                        <img src={img} alt={`Obrázok ${index + 2}`} />
+                        <div className="image-actions">
+                          <button type="button" className="image-btn image-btn-main" onClick={() => setAsMainImage(index)} title="Nastaviť ako hlavný">★</button>
+                          <button type="button" className="image-btn image-btn-delete" onClick={() => removeImage(index)}>×</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="no-images">
+                    <div className="no-images-icon">🖼️</div>
                     <p>Zatiaľ žiadne obrázky</p>
                   </div>
                 )}
               </div>
-            )}
+            </div>
+          )}
 
-            {/* ========== ATTRIBUTES TAB ========== */}
-            {activeTab === 'attributes' && (
-              <div>
-                <p style={{color: '#6b7280', marginBottom: 20}}>
-                  Pridajte technické parametre produktu (napr. Farba, Veľkosť, Pamäť, Procesor...)
-                </p>
-                
-                {attributes.length > 0 && (
-                  <div style={{marginBottom: 20}}>
-                    <div className="attribute-row" style={{marginBottom: 8}}>
-                      <label className="admin-label" style={{margin: 0}}>Názov parametra</label>
-                      <label className="admin-label" style={{margin: 0}}>Hodnota</label>
-                      <div></div>
-                    </div>
-                    
-                    {attributes.map((attr, index) => (
-                      <div key={attr.id || index} className="attribute-row">
-                        <input
-                          type="text"
-                          className="admin-input"
-                          placeholder="napr. Farba"
-                          value={attr.name}
-                          onChange={(e) => updateAttribute(index, 'name', e.target.value)}
-                        />
-                        <input
-                          type="text"
-                          className="admin-input"
-                          placeholder="napr. Čierna"
-                          value={attr.value}
-                          onChange={(e) => updateAttribute(index, 'value', e.target.value)}
-                        />
-                        <button 
-                          type="button" 
-                          className="attribute-remove"
-                          onClick={() => removeAttribute(index)}
-                          title="Odstrániť"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                
-                <button 
-                  type="button" 
-                  className="admin-btn admin-btn-outline" 
-                  onClick={addAttribute}
-                >
-                  + Pridať parameter
-                </button>
-
-                {attributes.length === 0 && (
-                  <div style={{
-                    marginTop: 30,
-                    padding: 40,
-                    textAlign: 'center',
-                    background: '#f9fafb',
-                    borderRadius: 8,
-                    color: '#9ca3af'
-                  }}>
-                    <div style={{fontSize: 40, marginBottom: 12}}>📊</div>
-                    <p>Zatiaľ žiadne parametre</p>
-                    <p style={{fontSize: 13}}>Kliknite na "Pridať parameter" pre pridanie</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ========== SEO TAB ========== */}
-            {activeTab === 'seo' && (
-              <div style={{maxWidth: 700}}>
-                <div className="admin-form-group">
-                  <label className="admin-label">SEO Titulok</label>
+          {/* Attributes Tab */}
+          {activeTab === 'attributes' && (
+            <div className="form-card">
+              <div className="form-grid">
+                <div className="form-group">
+                  <label className="form-label">EAN</label>
                   <input
                     type="text"
-                    className="admin-input"
-                    value={form.seo_title}
-                    onChange={e => setForm(f => ({ ...f, seo_title: e.target.value }))}
-                    placeholder={form.title || 'Názov produktu'}
-                    maxLength={60}
+                    className="form-input"
+                    value={product.ean || ''}
+                    onChange={e => setProduct(prev => ({ ...prev, ean: e.target.value }))}
                   />
-                  <div style={{display: 'flex', justifyContent: 'space-between', marginTop: 4}}>
-                    <small style={{color: '#9ca3af'}}>Odporúčaná dĺžka: 50-60 znakov</small>
-                    <small style={{color: form.seo_title.length > 60 ? '#dc2626' : '#9ca3af'}}>
-                      {form.seo_title.length}/60
-                    </small>
-                  </div>
                 </div>
 
-                <div className="admin-form-group">
-                  <label className="admin-label">SEO Popis (Meta Description)</label>
-                  <textarea
-                    className="admin-textarea"
-                    value={form.seo_description}
-                    onChange={e => setForm(f => ({ ...f, seo_description: e.target.value }))}
-                    placeholder={form.short_description || 'Popis produktu pre vyhľadávače...'}
-                    maxLength={160}
-                    rows={3}
+                <div className="form-group">
+                  <label className="form-label">SKU</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={product.sku || ''}
+                    onChange={e => setProduct(prev => ({ ...prev, sku: e.target.value }))}
                   />
-                  <div style={{display: 'flex', justifyContent: 'space-between', marginTop: 4}}>
-                    <small style={{color: '#9ca3af'}}>Odporúčaná dĺžka: 150-160 znakov</small>
-                    <small style={{color: form.seo_description.length > 160 ? '#dc2626' : '#9ca3af'}}>
-                      {form.seo_description.length}/160
-                    </small>
-                  </div>
-                </div>
-
-                <div style={{
-                  marginTop: 30,
-                  padding: 20,
-                  background: '#f9fafb',
-                  borderRadius: 12,
-                  border: '1px solid #e5e7eb'
-                }}>
-                  <p style={{fontSize: 12, color: '#6b7280', marginBottom: 12, fontWeight: 500}}>
-                    📱 Náhľad vo výsledkoch vyhľadávania:
-                  </p>
-                  <div style={{
-                    background: 'white',
-                    padding: 16,
-                    borderRadius: 8,
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                  }}>
-                    <div style={{color: '#1a0dab', fontSize: 18, marginBottom: 4, fontFamily: 'Arial'}}>
-                      {form.seo_title || form.title || 'Názov produktu'} | MegaBuy.sk
-                    </div>
-                    <div style={{color: '#006621', fontSize: 14, marginBottom: 4}}>
-                      https://megabuy.sk › produkt › {form.slug || 'url-produktu'}
-                    </div>
-                    <div style={{color: '#545454', fontSize: 13, lineHeight: 1.4}}>
-                      {form.seo_description || form.short_description || 'Popis produktu sa zobrazí tu. Napíšte zaujímavý popis, ktorý priláka návštevníkov z vyhľadávačov.'}
-                    </div>
-                  </div>
                 </div>
               </div>
-            )}
-          </div>
-        </div>
-      </form>
-    </div>
+            </div>
+          )}
+
+          {/* SEO Tab */}
+          {activeTab === 'seo' && (
+            <div className="form-card">
+              <div className="form-group">
+                <label className="form-label">SEO Titulok</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={product.meta_title || ''}
+                  onChange={e => setProduct(prev => ({ ...prev, meta_title: e.target.value }))}
+                  placeholder={product.title}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">SEO Popis</label>
+                <textarea
+                  className="form-input form-textarea"
+                  rows={3}
+                  value={product.meta_description || ''}
+                  onChange={e => setProduct(prev => ({ ...prev, meta_description: e.target.value }))}
+                  placeholder="Automaticky generovaný z popisu produktu"
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">URL Slug</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={product.slug}
+                  onChange={e => setProduct(prev => ({ ...prev, slug: e.target.value }))}
+                />
+              </div>
+            </div>
+          )}
+        </form>
+      </div>
+    </>
   )
 }
