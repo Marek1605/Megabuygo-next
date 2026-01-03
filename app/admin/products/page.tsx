@@ -221,27 +221,32 @@ export default function ProductsPage() {
 
   const handleDuplicateProduct = async (id: string) => {
     try {
-      const product = await api.getProduct(id)
+      const product = await api.getProduct(id) as any
       if (product) {
         const newProduct = {
-          ...product,
-          title: product.title + ' (kópia)',
-          slug: product.slug + '-kopia-' + Date.now(),
-          ean: '',
-          sku: '',
+          title: product.title + " (kopia)",
+          slug: product.slug + "-kopia-" + Date.now(),
+          description: product.description || "",
+          short_description: product.short_description || "",
+          category_id: product.category_id || "",
+          brand_name: product.brand || "",
+          image_url: product.image_url || "",
+          price_min: product.price_min || 0,
+          price_max: product.price_max || 0,
+          stock_status: product.stock_status || "instock",
+          is_active: product.is_active,
+          ean: "",
+          sku: "",
         }
-        delete newProduct.id
-        delete newProduct.created_at
-        delete newProduct.updated_at
-        
         const result = await api.createProduct(newProduct)
         if (result?.id) {
-          router.push(`/admin/products/${result.id}`)
+          router.push("/admin/products/" + result.id)
         }
       }
     } catch (error) {
-      alert('Chyba pri duplikovaní produktu')
+      alert("Chyba pri duplikovani produktu")
     }
+  }
   }
 
   const handleExport = async () => {
