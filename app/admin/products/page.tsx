@@ -30,7 +30,7 @@ export default function ProductsPage() {
     setLoading(true)
     const response = await api.getProducts({ page, limit, search: search || undefined })
     if (response.success && response.data) {
-      setProducts(response.data.products || [])
+      setProducts(response.data.items || [])
       setTotal(response.data.total || 0)
     }
     setLoading(false)
