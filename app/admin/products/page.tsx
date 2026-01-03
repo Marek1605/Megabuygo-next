@@ -83,7 +83,6 @@ export default function ProductsPage() {
   }
 
   async function loadStats() {
-    // This would need a stats endpoint
     const data = await api.getAdminProducts({ limit: 1 })
     if (data) {
       setStats(prev => ({ ...prev, total: data.total }))
@@ -157,7 +156,7 @@ export default function ProductsPage() {
     const ids = Array.from(selectedIds)
     
     if (bulkAction === 'delete') {
-      if (!confirm(`Naozaj chcete vymaza≈• ${ids.length} produktov? T√°to akcia je nevratn√°.`)) {
+      if (!confirm(`Naozaj chcete vymazat ${ids.length} produktov? T·to akcia je nevratn·.`)) {
         return
       }
     }
@@ -193,7 +192,7 @@ export default function ProductsPage() {
         }
       }
 
-      alert(`Hromadn√° akcia dokonƒçen√°:\n‚úÖ √öspe≈°ne: ${successCount}\n‚ùå Chyby: ${errorCount}`)
+      alert(`Hromadn· akcia dokoncen·:\n? ⁄speöne: ${successCount}\n? Chyby: ${errorCount}`)
       
       setSelectedIds(new Set())
       setSelectAll(false)
@@ -201,21 +200,21 @@ export default function ProductsPage() {
       loadProducts()
       loadStats()
     } catch (error) {
-      alert('Chyba pri vykon√°van√≠ hromadnej akcie')
+      alert('Chyba pri vykon·vanÌ hromadnej akcie')
     }
     
     setBulkProcessing(false)
   }
 
   const handleDeleteProduct = async (id: string, title: string) => {
-    if (!confirm(`Naozaj chcete vymaza≈• produkt "${title}"?`)) return
+    if (!confirm(`Naozaj chcete vymazat produkt "${title}"?`)) return
     
     try {
       await api.deleteProduct(id)
       loadProducts()
       loadStats()
     } catch (error) {
-      alert('Chyba pri mazan√≠ produktu')
+      alert('Chyba pri mazanÌ produktu')
     }
   }
 
@@ -224,7 +223,7 @@ export default function ProductsPage() {
       const product = await api.getProduct(id) as any
       if (product) {
         const newProduct = {
-          title: product.title + " (kopia)",
+          title: product.title + " (kÛpia)",
           slug: product.slug + "-kopia-" + Date.now(),
           description: product.description || "",
           short_description: product.short_description || "",
@@ -244,15 +243,13 @@ export default function ProductsPage() {
         }
       }
     } catch (error) {
-      alert("Chyba pri duplikovani produktu")
+      alert("Chyba pri duplikovanÌ produktu")
     }
-  }
   }
 
   const handleExport = async () => {
-    // Export selected or all
     const ids = selectedIds.size > 0 ? Array.from(selectedIds) : null
-    alert(`Export ${ids ? ids.length + ' vybran√Ωch' : 'v≈°etk√Ωch'} produktov - funkcia bude dostupn√° ƒçoskoro`)
+    alert(`Export ${ids ? ids.length + ' vybran˝ch' : 'vöetk˝ch'} produktov - funkcia bude dostupn· coskoro`)
   }
 
   const totalPages = Math.ceil(total / limit)
@@ -631,42 +628,6 @@ export default function ProductsPage() {
           to { transform: rotate(360deg); }
         }
 
-        .dropdown {
-          position: relative;
-        }
-        .dropdown-menu {
-          position: absolute;
-          top: 100%;
-          right: 0;
-          background: white;
-          border: 1px solid #e5e7eb;
-          border-radius: 8px;
-          box-shadow: 0 10px 40px rgba(0,0,0,0.15);
-          min-width: 160px;
-          z-index: 100;
-          padding: 4px 0;
-          margin-top: 4px;
-        }
-        .dropdown-item {
-          display: block;
-          width: 100%;
-          padding: 10px 16px;
-          text-align: left;
-          border: none;
-          background: none;
-          cursor: pointer;
-          font-size: 14px;
-        }
-        .dropdown-item:hover {
-          background: #f3f4f6;
-        }
-        .dropdown-item.danger {
-          color: #dc2626;
-        }
-        .dropdown-item.danger:hover {
-          background: #fee2e2;
-        }
-
         .checkbox-cell {
           width: 40px;
         }
@@ -681,19 +642,19 @@ export default function ProductsPage() {
       <div className="products-header">
         <div>
           <h1 className="products-title">
-            üì¶ Produkty
+            ?? Produkty
             <span className="products-count">{total.toLocaleString()}</span>
           </h1>
         </div>
         <div className="header-actions">
           <button className="admin-btn admin-btn-outline" onClick={handleExport}>
-            üì• Export
+            ?? Export
           </button>
           <Link href="/admin/feeds" className="admin-btn admin-btn-outline">
-            üì° Importy
+            ?? Importy
           </Link>
           <Link href="/admin/products/new" className="admin-btn">
-            + Nov√Ω produkt
+            + Nov˝ produkt
           </Link>
         </div>
       </div>
@@ -701,31 +662,31 @@ export default function ProductsPage() {
       {/* Stats Bar */}
       <div className="stats-bar">
         <div className="stat-item">
-          <div className="stat-icon total">üì¶</div>
+          <div className="stat-icon total">??</div>
           <div className="stat-info">
             <strong>{total.toLocaleString()}</strong>
             <span>Celkom produktov</span>
           </div>
         </div>
         <div className="stat-item">
-          <div className="stat-icon active">‚úÖ</div>
+          <div className="stat-icon active">?</div>
           <div className="stat-info">
             <strong>{stats.active.toLocaleString()}</strong>
-            <span>Akt√≠vnych</span>
+            <span>AktÌvnych</span>
           </div>
         </div>
         <div className="stat-item">
-          <div className="stat-icon inactive">‚è∏Ô∏è</div>
+          <div className="stat-icon inactive">??</div>
           <div className="stat-info">
             <strong>{stats.inactive.toLocaleString()}</strong>
-            <span>Neakt√≠vnych</span>
+            <span>NeaktÌvnych</span>
           </div>
         </div>
         <div className="stat-item">
-          <div className="stat-icon outofstock">üì≠</div>
+          <div className="stat-icon outofstock">??</div>
           <div className="stat-info">
             <strong>{stats.outofstock.toLocaleString()}</strong>
-            <span>Nedostupn√Ωch</span>
+            <span>Nedostupn˝ch</span>
           </div>
         </div>
       </div>
@@ -734,36 +695,36 @@ export default function ProductsPage() {
       <div className="filters-section">
         <div className="filters-header" onClick={() => setShowFilters(!showFilters)}>
           <div className="filters-toggle">
-            <span>üîç</span>
-            <span>Filtre a vyhƒæad√°vanie</span>
+            <span>??</span>
+            <span>Filtre a vyhlad·vanie</span>
             {hasActiveFilters && (
-              <span className="status-badge featured">Akt√≠vne filtre</span>
+              <span className="status-badge featured">AktÌvne filtre</span>
             )}
           </div>
-          <span>{showFilters ? '‚ñ≤' : '‚ñº'}</span>
+          <span>{showFilters ? '?' : '?'}</span>
         </div>
         
         {showFilters && (
           <>
             <div className="filters-body">
               <div className="filter-group">
-                <label>Vyhƒæad√°vanie</label>
+                <label>Vyhlad·vanie</label>
                 <input
                   type="text"
                   className="filter-input"
-                  placeholder="N√°zov, EAN, SKU..."
+                  placeholder="N·zov, EAN, SKU..."
                   value={filters.search}
                   onChange={e => handleFilterChange('search', e.target.value)}
                 />
               </div>
               <div className="filter-group">
-                <label>Kateg√≥ria</label>
+                <label>KategÛria</label>
                 <select
                   className="filter-input"
                   value={filters.category_id}
                   onChange={e => handleFilterChange('category_id', e.target.value)}
                 >
-                  <option value="">V≈°etky kateg√≥rie</option>
+                  <option value="">Vöetky kategÛrie</option>
                   {categories.map(cat => (
                     <option key={cat.id} value={cat.id}>
                       {'  '.repeat(cat.depth || 0)}{cat.name}
@@ -778,10 +739,10 @@ export default function ProductsPage() {
                   value={filters.stock_status}
                   onChange={e => handleFilterChange('stock_status', e.target.value)}
                 >
-                  <option value="">V≈°etky</option>
+                  <option value="">Vöetky</option>
                   <option value="instock">Skladom</option>
-                  <option value="outofstock">Nedostupn√©</option>
-                  <option value="onbackorder">Na objedn√°vku</option>
+                  <option value="outofstock">NedostupnÈ</option>
+                  <option value="onbackorder">Na objedn·vku</option>
                 </select>
               </div>
               <div className="filter-group">
@@ -791,13 +752,13 @@ export default function ProductsPage() {
                   value={filters.is_active}
                   onChange={e => handleFilterChange('is_active', e.target.value)}
                 >
-                  <option value="">V≈°etky</option>
-                  <option value="true">Akt√≠vne</option>
-                  <option value="false">Neakt√≠vne</option>
+                  <option value="">Vöetky</option>
+                  <option value="true">AktÌvne</option>
+                  <option value="false">NeaktÌvne</option>
                 </select>
               </div>
               <div className="filter-group">
-                <label>Cena od (‚Ç¨)</label>
+                <label>Cena od (Ä)</label>
                 <input
                   type="number"
                   className="filter-input"
@@ -807,26 +768,26 @@ export default function ProductsPage() {
                 />
               </div>
               <div className="filter-group">
-                <label>Cena do (‚Ç¨)</label>
+                <label>Cena do (Ä)</label>
                 <input
                   type="number"
                   className="filter-input"
-                  placeholder="‚àû"
+                  placeholder="8"
                   value={filters.price_max}
                   onChange={e => handleFilterChange('price_max', e.target.value)}
                 />
               </div>
               <div className="filter-group">
-                <label>Zoradi≈• podƒæa</label>
+                <label>Zoradit podla</label>
                 <select
                   className="filter-input"
                   value={filters.sort}
                   onChange={e => handleFilterChange('sort', e.target.value)}
                 >
-                  <option value="newest">Najnov≈°ie</option>
-                  <option value="oldest">Najstar≈°ie</option>
-                  <option value="title_asc">N√°zov A-Z</option>
-                  <option value="title_desc">N√°zov Z-A</option>
+                  <option value="newest">Najnovöie</option>
+                  <option value="oldest">Najstaröie</option>
+                  <option value="title_asc">N·zov A-Z</option>
+                  <option value="title_desc">N·zov Z-A</option>
                   <option value="price_asc">Cena vzostupne</option>
                   <option value="price_desc">Cena zostupne</option>
                 </select>
@@ -837,26 +798,26 @@ export default function ProductsPage() {
               <div className="active-filters">
                 {filters.search && (
                   <span className="filter-tag">
-                    Hƒæad√°: {filters.search}
-                    <button onClick={() => handleFilterChange('search', '')}>√ó</button>
+                    Hlad·: {filters.search}
+                    <button onClick={() => handleFilterChange('search', '')}>◊</button>
                   </span>
                 )}
                 {filters.category_id && (
                   <span className="filter-tag">
-                    Kateg√≥ria: {categories.find(c => c.id === filters.category_id)?.name}
-                    <button onClick={() => handleFilterChange('category_id', '')}>√ó</button>
+                    KategÛria: {categories.find(c => c.id === filters.category_id)?.name}
+                    <button onClick={() => handleFilterChange('category_id', '')}>◊</button>
                   </span>
                 )}
                 {filters.stock_status && (
                   <span className="filter-tag">
                     Sklad: {filters.stock_status}
-                    <button onClick={() => handleFilterChange('stock_status', '')}>√ó</button>
+                    <button onClick={() => handleFilterChange('stock_status', '')}>◊</button>
                   </span>
                 )}
                 {filters.is_active && (
                   <span className="filter-tag">
-                    {filters.is_active === 'true' ? 'Akt√≠vne' : 'Neakt√≠vne'}
-                    <button onClick={() => handleFilterChange('is_active', '')}>√ó</button>
+                    {filters.is_active === 'true' ? 'AktÌvne' : 'NeaktÌvne'}
+                    <button onClick={() => handleFilterChange('is_active', '')}>◊</button>
                   </span>
                 )}
                 <button 
@@ -870,7 +831,7 @@ export default function ProductsPage() {
                     textDecoration: 'underline'
                   }}
                 >
-                  Zru≈°i≈• v≈°etky filtre
+                  Zruöit vöetky filtre
                 </button>
               </div>
             )}
@@ -882,8 +843,8 @@ export default function ProductsPage() {
       <div className={`bulk-bar ${selectedIds.size > 0 ? 'has-selection' : ''}`}>
         <span className="bulk-select-info">
           {selectedIds.size > 0 
-            ? `Vybran√Ωch: ${selectedIds.size} produktov`
-            : 'Vyberte produkty pre hromadn√© akcie'
+            ? `Vybran˝ch: ${selectedIds.size} produktov`
+            : 'Vyberte produkty pre hromadnÈ akcie'
           }
         </span>
         
@@ -894,12 +855,12 @@ export default function ProductsPage() {
           style={{ width: 'auto', minWidth: 180 }}
           disabled={selectedIds.size === 0}
         >
-          <option value="">-- Hromadn√° akcia --</option>
-          <option value="activate">‚úÖ Aktivova≈•</option>
-          <option value="deactivate">‚è∏Ô∏è Deaktivova≈•</option>
-          <option value="feature">‚≠ê Oznaƒçi≈• ako odpor√∫ƒçan√©</option>
-          <option value="unfeature">‚òÜ Zru≈°i≈• odpor√∫ƒçan√©</option>
-          <option value="delete">üóëÔ∏è Vymaza≈•</option>
+          <option value="">-- Hromadn· akcia --</option>
+          <option value="activate">? Aktivovat</option>
+          <option value="deactivate">?? Deaktivovat</option>
+          <option value="feature">? Oznacit ako odpor˙canÈ</option>
+          <option value="unfeature">? Zruöit odpor˙canÈ</option>
+          <option value="delete">??? Vymazat</option>
         </select>
         
         <button 
@@ -907,7 +868,7 @@ export default function ProductsPage() {
           onClick={handleBulkAction}
           disabled={!bulkAction || selectedIds.size === 0 || bulkProcessing}
         >
-          {bulkProcessing ? 'Sprac√∫vam...' : 'Vykona≈•'}
+          {bulkProcessing ? 'Sprac˙vam...' : 'Vykonat'}
         </button>
 
         {selectedIds.size > 0 && (
@@ -915,7 +876,7 @@ export default function ProductsPage() {
             className="admin-btn admin-btn-outline"
             onClick={() => { setSelectedIds(new Set()); setSelectAll(false); }}
           >
-            Zru≈°i≈• v√Ωber
+            Zruöit v˝ber
           </button>
         )}
       </div>
@@ -927,21 +888,21 @@ export default function ProductsPage() {
         </div>
       ) : products.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-state-icon">üì¶</div>
-          <h3>≈Ωiadne produkty</h3>
+          <div className="empty-state-icon">??</div>
+          <h3>éiadne produkty</h3>
           <p>
             {hasActiveFilters 
-              ? 'Pre zadan√© filtre sa nena≈°li ≈æiadne produkty.'
-              : 'Zatiaƒæ nem√°te ≈æiadne produkty. Pridajte prv√Ω produkt alebo importujte z feedu.'
+              ? 'Pre zadanÈ filtre sa nenaöli ûiadne produkty.'
+              : 'Zatial nem·te ûiadne produkty. Pridajte prv˝ produkt alebo importujte z feedu.'
             }
           </p>
           {hasActiveFilters ? (
             <button className="admin-btn admin-btn-outline" onClick={clearFilters}>
-              Zru≈°i≈• filtre
+              Zruöit filtre
             </button>
           ) : (
             <Link href="/admin/products/new" className="admin-btn">
-              + Prida≈• prv√Ω produkt
+              + Pridat prv˝ produkt
             </Link>
           )}
         </div>
@@ -958,11 +919,11 @@ export default function ProductsPage() {
                   />
                 </th>
                 <th>Produkt</th>
-                <th>Kateg√≥ria</th>
+                <th>KategÛria</th>
                 <th>Cena</th>
                 <th>Sklad</th>
                 <th>Stav</th>
-                <th>Vytvoren√©</th>
+                <th>VytvorenÈ</th>
                 <th>Akcie</th>
               </tr>
             </thead>
@@ -985,7 +946,7 @@ export default function ProductsPage() {
                         {product.image_url ? (
                           <img src={product.image_url} alt="" />
                         ) : (
-                          <span style={{ fontSize: 24 }}>üì¶</span>
+                          <span style={{ fontSize: 24 }}>??</span>
                         )}
                       </div>
                       <div className="product-info">
@@ -993,12 +954,12 @@ export default function ProductsPage() {
                           <Link href={`/admin/products/${product.id}`}>
                             {product.title}
                           </Link>
-                          {product.is_featured && <span title="Odpor√∫ƒçan√Ω">‚≠ê</span>}
+                          {product.is_featured && <span title="Odpor˙can˝">?</span>}
                         </div>
                         <div className="product-meta">
                           {product.ean && <span>EAN: {product.ean}</span>}
                           {product.sku && <span>SKU: {product.sku}</span>}
-                          {product.brand && <span>üè∑Ô∏è {product.brand}</span>}
+                          {product.brand && <span>??? {product.brand}</span>}
                         </div>
                       </div>
                     </div>
@@ -1010,20 +971,20 @@ export default function ProductsPage() {
                     {formatPrice(product.price_min)}
                     {product.price_max > product.price_min && (
                       <div className="price-range">
-                        a≈æ {formatPrice(product.price_max)}
+                        aû {formatPrice(product.price_max)}
                       </div>
                     )}
                   </td>
                   <td>
                     <span className={`status-badge ${product.stock_status}`}>
-                      {product.stock_status === 'instock' && '‚úÖ Skladom'}
-                      {product.stock_status === 'outofstock' && '‚ùå Nedostupn√©'}
-                      {product.stock_status === 'onbackorder' && 'üì¶ Objedn√°vka'}
+                      {product.stock_status === 'instock' && '? Skladom'}
+                      {product.stock_status === 'outofstock' && '? NedostupnÈ'}
+                      {product.stock_status === 'onbackorder' && '?? Objedn·vka'}
                     </span>
                   </td>
                   <td>
                     <span className={`status-badge ${product.is_active ? 'active' : 'inactive'}`}>
-                      {product.is_active ? '‚úÖ Akt√≠vny' : '‚è∏Ô∏è Neakt√≠vny'}
+                      {product.is_active ? '? AktÌvny' : '?? NeaktÌvny'}
                     </span>
                   </td>
                   <td style={{ color: '#6b7280', fontSize: 13 }}>
@@ -1035,21 +996,21 @@ export default function ProductsPage() {
                         href={`/admin/products/${product.id}`}
                         className="action-btn primary"
                       >
-                        ‚úèÔ∏è
+                        ??
                       </Link>
                       <button 
                         className="action-btn"
                         onClick={() => handleDuplicateProduct(product.id)}
-                        title="Duplikova≈•"
+                        title="Duplikovat"
                       >
-                        üìã
+                        ??
                       </button>
                       <button 
                         className="action-btn delete"
                         onClick={() => handleDeleteProduct(product.id, product.title)}
-                        title="Vymaza≈•"
+                        title="Vymazat"
                       >
-                        üóëÔ∏è
+                        ???
                       </button>
                     </div>
                   </td>
@@ -1062,7 +1023,7 @@ export default function ProductsPage() {
           {totalPages > 1 && (
             <div className="pagination">
               <div className="pagination-info">
-                Zobrazen√© {((page - 1) * limit) + 1} - {Math.min(page * limit, total)} z {total.toLocaleString()} produktov
+                ZobrazenÈ {((page - 1) * limit) + 1} - {Math.min(page * limit, total)} z {total.toLocaleString()} produktov
               </div>
               <div className="pagination-buttons">
                 <button 
@@ -1070,14 +1031,14 @@ export default function ProductsPage() {
                   onClick={() => setPage(1)}
                   disabled={page === 1}
                 >
-                  ¬´
+                  ´
                 </button>
                 <button 
                   className="pagination-btn"
                   onClick={() => setPage(p => p - 1)}
                   disabled={page === 1}
                 >
-                  ‚Äπ
+                  ã
                 </button>
                 
                 {Array.from({ length: Math.min(7, totalPages) }, (_, i) => {
@@ -1108,14 +1069,14 @@ export default function ProductsPage() {
                   onClick={() => setPage(p => p + 1)}
                   disabled={page === totalPages}
                 >
-                  ‚Ä∫
+                  õ
                 </button>
                 <button 
                   className="pagination-btn"
                   onClick={() => setPage(totalPages)}
                   disabled={page === totalPages}
                 >
-                  ¬ª
+                  ª
                 </button>
               </div>
             </div>
