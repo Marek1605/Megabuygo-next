@@ -1,0 +1,256 @@
+<div class="mp-single">
+    <div class="mp-single__container">
+        <!-- Breadcrumb -->
+        <nav class="mp-breadcrumb">
+            <a href="/">Domov</a>
+            <span class="mp-breadcrumb__sep">›</span>
+            {{if .category}}
+            <a href="/kategoria/{{.category.Slug}}">{{.category.Name}}</a>
+            <span class="mp-breadcrumb__sep">›</span>
+            {{end}}
+            <span class="mp-breadcrumb__current">{{.product.Title}}</span>
+        </nav>
+        
+        <!-- Product Main -->
+        <div class="mp-product-main">
+            <!-- Gallery -->
+            <div class="mp-gallery">
+                <div class="mp-gallery__main">
+                    {{if .product.ImageURL}}
+                    <img src="{{.product.ImageURL}}" alt="{{.product.Title}}" id="main-image">
+                    {{else}}
+                    <div style="width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:#f3f4f6;font-size:64px;border-radius:12px;">📦</div>
+                    {{end}}
+                    {{if gt (len .offers) 0}}
+                    <span class="mp-gallery__badge" style="background:#10b981;">Najlepšia cena</span>
+                    {{end}}
+                </div>
+                {{if .product.GalleryImages}}
+                <div class="mp-gallery__thumbs">
+                    <div class="mp-gallery__thumb is-active">
+                        <img src="{{.product.ImageURL}}" alt="">
+                    </div>
+                    {{range .product.GalleryImages}}
+                    <div class="mp-gallery__thumb">
+                        <img src="{{.}}" alt="">
+                    </div>
+                    {{end}}
+                </div>
+                {{end}}
+            </div>
+            
+            <!-- Info -->
+            <div class="mp-info">
+                <h1 class="mp-info__title">{{.product.Title}}</h1>
+                
+                {{if gt .product.Rating 0}}
+                <div class="mp-info__rating">
+                    <span class="mp-stars" style="color:#fbbf24;">★★★★★</span>
+                    <span class="mp-info__rating-text">{{printf "%.1f" .product.Rating}}</span>
+                    <span style="color:#6b7280;font-size:14px;">({{.product.ReviewCount}} recenzií)</span>
+                </div>
+                {{end}}
+                
+                <!-- Price Box -->
+                <div class="mp-info__price-box">
+                    {{if gt .product.MinPrice 0}}
+                    <div class="mp-info__prices">
+                        <span class="mp-info__price">od {{printf "%.2f" .product.MinPrice}} €</span>
+                        {{if and .product.MaxPrice (ne .product.MinPrice .product.MaxPrice)}}
+                        <span style="font-size:14px;color:#6b7280;">do {{printf "%.2f" .product.MaxPrice}} €</span>
+                        {{end}}
+                    </div>
+                    {{else}}
+                    <span class="mp-info__price">Cena nedostupná</span>
+                    {{end}}
+                </div>
+                
+                <!-- Meta -->
+                <div class="mp-info__meta">
+                    {{if .product.EAN}}
+                    <span class="mp-info__sku">EAN: {{.product.EAN}}</span>
+                    {{end}}
+                    {{if .product.SKU}}
+                    <span class="mp-info__sku">SKU: {{.product.SKU}}</span>
+                    {{end}}
+                    {{if .brand}}
+                    <span style="color:#6b7280;">Značka: <strong>{{.brand.Name}}</strong></span>
+                    {{end}}
+                </div>
+                
+                <!-- Short Description -->
+                {{if .product.ShortDescription}}
+                <div class="mp-info__short-desc">
+                    {{.product.ShortDescription}}
+                </div>
+                {{end}}
+                
+                <!-- Actions -->
+                <div class="mp-info__cta">
+                    <button class="mp-btn mp-btn--outline" onclick="mpWishlist.toggle('{{.product.ID}}'); this.classList.toggle('is-active');">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                        Pridať do obľúbených
+                    </button>
+                    <button class="mp-btn mp-btn--outline" onclick="mpCompare.toggle('{{.product.ID}}'); this.classList.toggle('is-active');">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 2l4 4-4 4"/><path d="M3 6h18"/><path d="M7 14l-4 4 4 4"/><path d="M21 18H3"/></svg>
+                        Porovnať
+                    </button>
+                </div>
+                
+                <!-- Benefits -->
+                <div class="mp-info__benefits" style="margin-top:24px;">
+                    <div class="mp-benefit">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        Porovnanie cien z {{len .offers}} obchodov
+                    </div>
+                    <div class="mp-benefit">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        Aktuálne ceny
+                    </div>
+                    <div class="mp-benefit">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        Bezplatné porovnanie
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tabs -->
+        <div class="mp-tabs">
+            <div class="mp-tabs__nav">
+                <button class="mp-tabs__tab is-active" data-tab="offers">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                    Ponuky ({{len .offers}})
+                </button>
+                {{if .product.Description}}
+                <button class="mp-tabs__tab" data-tab="description">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                    Popis
+                </button>
+                {{end}}
+                {{if .attributes}}
+                <button class="mp-tabs__tab" data-tab="params">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/></svg>
+                    Parametre
+                </button>
+                {{end}}
+            </div>
+            
+            <div class="mp-tabs__content">
+                <!-- Offers Tab -->
+                <div class="mp-tabs__panel is-active" data-panel="offers">
+                    <div class="mp-offers__header">
+                        <h3>Porovnanie cien z {{len .offers}} obchodov</h3>
+                        <p>Zoradené od najnižšej ceny</p>
+                    </div>
+                    
+                    {{range $index, $offer := .offers}}
+                    <div class="mp-offer{{if eq $index 0}} mp-offer--best{{end}}">
+                        {{if eq $index 0}}
+                        <span class="mp-offer__badge">Najlepšia cena</span>
+                        {{end}}
+                        <div class="mp-offer__seller">
+                            {{if .VendorLogo}}
+                            <img src="{{.VendorLogo}}" alt="{{.VendorName}}" class="mp-offer__seller-logo" style="object-fit:contain;">
+                            {{else}}
+                            <div class="mp-offer__seller-logo">{{slice .VendorName 0 1}}</div>
+                            {{end}}
+                            <div>
+                                <span class="mp-offer__seller-name">{{.VendorName}}</span>
+                                {{if .VendorRating}}
+                                <span class="mp-offer__seller-rating">
+                                    <span style="color:#fbbf24;">★</span>
+                                    {{printf "%.1f" .VendorRating}}
+                                </span>
+                                {{end}}
+                            </div>
+                        </div>
+                        <div class="mp-offer__stock" style="font-size: 13px; font-weight: 500;">
+                            {{if .InStock}}
+                            <span style="color:#10b981;">✓ Skladom</span>
+                            {{else}}
+                            <span style="color:#f59e0b;">Na objednávku</span>
+                            {{end}}
+                        </div>
+                        <div class="mp-offer__delivery">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                            {{if .DeliveryDays}}
+                            Doručenie do {{.DeliveryDays}} dní
+                            {{else}}
+                            Doručenie podľa dopravcu
+                            {{end}}
+                        </div>
+                        <div class="mp-offer__price">
+                            <span class="mp-offer__price-value">{{printf "%.2f" .Price}} €</span>
+                        </div>
+                        <a href="/go/{{.ID}}" class="mp-offer__btn" target="_blank" rel="nofollow noopener" data-offer-id="{{.ID}}">
+                            Do obchodu
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                        </a>
+                    </div>
+                    {{else}}
+                    <div style="text-align:center;padding:40px;color:#6b7280;">
+                        <p>Pre tento produkt momentálne nemáme žiadne ponuky.</p>
+                    </div>
+                    {{end}}
+                </div>
+                
+                <!-- Description Tab -->
+                {{if .product.Description}}
+                <div class="mp-tabs__panel" data-panel="description">
+                    <div class="mp-description">
+                        {{.product.Description}}
+                    </div>
+                </div>
+                {{end}}
+                
+                <!-- Parameters Tab -->
+                {{if .attributes}}
+                <div class="mp-tabs__panel" data-panel="params">
+                    <table class="mp-params__table">
+                        {{range .attributes}}
+                        <tr>
+                            <th>{{.Key}}</th>
+                            <td>{{.Value}}</td>
+                        </tr>
+                        {{end}}
+                    </table>
+                </div>
+                {{end}}
+            </div>
+        </div>
+        
+        <!-- Related Products -->
+        {{if .relatedProducts}}
+        <section style="margin-top: 40px;">
+            <h2 class="mp-section-title" style="text-align:left;margin-bottom:20px;">Podobné produkty</h2>
+            <div class="mp-products-list">
+                {{range .relatedProducts}}
+                <div class="mp-product-row">
+                    <div class="mp-product-row__rank">
+                        <span class="mp-rank-badge">—</span>
+                    </div>
+                    <div class="mp-product-row__image">
+                        {{if .ImageURL}}
+                        <img src="{{.ImageURL}}" alt="{{.Title}}" loading="lazy">
+                        {{else}}
+                        <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f3f4f6;font-size:32px;">📦</div>
+                        {{end}}
+                    </div>
+                    <div class="mp-product-row__content">
+                        <a href="/produkt/{{.Slug}}" class="mp-product-row__title">{{.Title}}</a>
+                        <div class="mp-product-row__meta">
+                            <span class="mp-product-row__offers">{{.OfferCount}} ponúk</span>
+                        </div>
+                    </div>
+                    <div class="mp-product-row__price-box">
+                        <span class="mp-product-row__price">{{printf "%.2f" .MinPrice}} €</span>
+                        <a href="/produkt/{{.Slug}}" class="mp-product-row__btn">Porovnať</a>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+        </section>
+        {{end}}
+    </div>
+</div>

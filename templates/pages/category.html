@@ -1,0 +1,131 @@
+<div class="mp-archive">
+    <div class="mp-archive__container">
+        <!-- Breadcrumb -->
+        <nav class="mp-breadcrumb">
+            <a href="/">Domov</a>
+            <span class="mp-breadcrumb__sep">›</span>
+            {{if .parentCategory}}
+            <a href="/kategoria/{{.parentCategory.Slug}}">{{.parentCategory.Name}}</a>
+            <span class="mp-breadcrumb__sep">›</span>
+            {{end}}
+            <span class="mp-breadcrumb__current">{{.category.Name}}</span>
+        </nav>
+        
+        <!-- Category Header -->
+        <div class="mp-category-header">
+            {{if .category.ImageURL}}
+            <div class="mp-category-header__icon">
+                <img src="{{.category.ImageURL}}" alt="">
+            </div>
+            {{end}}
+            <h1 class="mp-category-header__title">{{.category.Name}}</h1>
+        </div>
+        
+        <!-- Subcategories -->
+        {{if .subcategories}}
+        <div class="mp-subcats">
+            {{range .subcategories}}
+            <a href="/kategoria/{{.Slug}}" class="mp-subcat">
+                <div class="mp-subcat__icon">
+                    {{if .ImageURL}}
+                    <img src="{{.ImageURL}}" alt="">
+                    {{else}}
+                    <span class="mp-subcat__letter">{{slice .Name 0 1}}</span>
+                    {{end}}
+                </div>
+                <div class="mp-subcat__content">
+                    <span class="mp-subcat__name">{{.Name}}</span>
+                </div>
+                <span class="mp-subcat__count">{{.ProductCount}}</span>
+            </a>
+            {{end}}
+        </div>
+        {{end}}
+        
+        <!-- Toolbar -->
+        <div class="mp-toolbar">
+            <span class="mp-toolbar__count">Nájdených <strong>{{.total}}</strong> produktov</span>
+            <select class="mp-toolbar__sort" id="mp-sort" onchange="window.location.href=this.value">
+                <option value="?sort=popular"{{if eq .sort "popular"}} selected{{end}}>Najpopulárnejšie</option>
+                <option value="?sort=price_asc"{{if eq .sort "price_asc"}} selected{{end}}>Najlacnejšie</option>
+                <option value="?sort=price_desc"{{if eq .sort "price_desc"}} selected{{end}}>Najdrahšie</option>
+                <option value="?sort=newest"{{if eq .sort "newest"}} selected{{end}}>Najnovšie</option>
+                <option value="?sort=rating"{{if eq .sort "rating"}} selected{{end}}>Najlepšie hodnotené</option>
+            </select>
+        </div>
+        
+        <!-- Products List -->
+        <div class="mp-products-list" id="mp-products">
+            {{range $index, $product := .products}}
+            <div class="mp-product-row{{if lt $index 3}} mp-product-row--featured{{end}}">
+                <div class="mp-product-row__rank">
+                    <span class="mp-rank-badge{{if eq $index 0}} mp-badge--gold{{else if eq $index 1}} mp-badge--silver{{else if eq $index 2}} mp-badge--bronze{{else if lt $index 10}} mp-badge--top10{{end}}">
+                        {{add $index 1}}
+                    </span>
+                </div>
+                <div class="mp-product-row__image">
+                    {{if .ImageURL}}
+                    <img src="{{.ImageURL}}" alt="{{.Title}}" loading="lazy">
+                    {{else}}
+                    <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f3f4f6;font-size:32px;">📦</div>
+                    {{end}}
+                </div>
+                <div class="mp-product-row__content">
+                    <a href="/produkt/{{.Slug}}" class="mp-product-row__title">{{.Title}}</a>
+                    {{if .ShortDescription}}
+                    <p class="mp-product-row__desc">{{.ShortDescription}}</p>
+                    {{end}}
+                    <div class="mp-product-row__meta">
+                        {{if gt .Rating 0}}
+                        <div class="mp-product-row__rating">
+                            <span class="mp-stars">★★★★★</span>
+                            <span>{{printf "%.1f" .Rating}}</span>
+                        </div>
+                        {{end}}
+                        {{if .BrandName}}
+                        <span style="color: #6b7280; font-size: 13px;">{{.BrandName}}</span>
+                        {{end}}
+                        <span class="mp-product-row__offers">{{.OfferCount}} ponúk</span>
+                    </div>
+                </div>
+                <div class="mp-product-row__price-box">
+                    <span class="mp-product-row__price">{{printf "%.2f" .MinPrice}} €</span>
+                    {{if and .MaxPrice (ne .MinPrice .MaxPrice)}}
+                    <span style="font-size: 12px; color: #6b7280;">až {{printf "%.2f" .MaxPrice}} €</span>
+                    {{end}}
+                    <a href="/produkt/{{.Slug}}" class="mp-product-row__btn">
+                        Porovnať
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </a>
+                </div>
+            </div>
+            {{else}}
+            <div class="mp-no-products" style="text-align: center; padding: 60px 20px; background: #fff; border-radius: 16px;">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M8 15s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></svg>
+                <p style="font-size: 16px; color: #6b7280; margin: 16px 0 0;">V tejto kategórii nie sú žiadne produkty</p>
+            </div>
+            {{end}}
+        </div>
+        
+        <!-- Pagination -->
+        {{if gt .totalPages 1}}
+        <div class="mp-pagination" id="mp-pagination">
+            {{if gt .page 1}}
+            <a href="?page={{sub .page 1}}&sort={{.sort}}">← Predošlá</a>
+            {{end}}
+            
+            {{range $p := .pagination}}
+            {{if eq $p $.page}}
+            <span class="active">{{$p}}</span>
+            {{else}}
+            <a href="?page={{$p}}&sort={{$.sort}}">{{$p}}</a>
+            {{end}}
+            {{end}}
+            
+            {{if lt .page .totalPages}}
+            <a href="?page={{add .page 1}}&sort={{.sort}}">Ďalšia →</a>
+            {{end}}
+        </div>
+        {{end}}
+    </div>
+</div>

@@ -1,0 +1,114 @@
+<!-- Hero Section -->
+<section class="mp-hero">
+    <div class="mp-hero__container">
+        <div class="mp-hero__content">
+            <h1 class="mp-hero__title">Porovnajte ceny<br>z tisícov obchodov</h1>
+            <p class="mp-hero__subtitle">Nájdite najlepšie ceny na Slovensku. Porovnávame viac ako 500 e-shopov.</p>
+            
+            <div class="mp-hero__stats">
+                <div class="mp-hero__stat">
+                    <span class="mp-hero__stat-value">{{.stats.ProductCount}}</span>
+                    <span class="mp-hero__stat-label">Produktov</span>
+                </div>
+                <div class="mp-hero__stat">
+                    <span class="mp-hero__stat-value">{{.stats.VendorCount}}</span>
+                    <span class="mp-hero__stat-label">E-shopov</span>
+                </div>
+                <div class="mp-hero__stat">
+                    <span class="mp-hero__stat-value">{{.stats.CategoryCount}}</span>
+                    <span class="mp-hero__stat-label">Kategórií</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Featured Categories -->
+<section class="mp-featured-cats">
+    <div class="mp-container">
+        <h2 class="mp-section-title">Obľúbené kategórie</h2>
+        <div class="mp-cats-grid">
+            {{range .featuredCategories}}
+            <a href="/kategoria/{{.Slug}}" class="mp-cat-card">
+                <div class="mp-cat-card__icon">{{.Icon}}</div>
+                <span class="mp-cat-card__name">{{.Name}}</span>
+                <span class="mp-cat-card__count">{{.ProductCount}} produktov</span>
+            </a>
+            {{end}}
+        </div>
+    </div>
+</section>
+
+<!-- Featured Products -->
+<section class="mp-products-section">
+    <div class="mp-container">
+        <h2 class="mp-section-title">Najlepšie ponuky</h2>
+        <div class="mp-products-list">
+            {{range $index, $product := .featuredProducts}}
+            <div class="mp-product-row{{if lt $index 3}} mp-product-row--featured{{end}}">
+                <div class="mp-product-row__rank">
+                    <span class="mp-rank-badge{{if eq $index 0}} mp-badge--gold{{else if eq $index 1}} mp-badge--silver{{else if eq $index 2}} mp-badge--bronze{{end}}">
+                        {{add $index 1}}
+                    </span>
+                </div>
+                <div class="mp-product-row__image">
+                    {{if .ImageURL}}
+                    <img src="{{.ImageURL}}" alt="{{.Title}}" loading="lazy">
+                    {{else}}
+                    <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f3f4f6;font-size:32px;">📦</div>
+                    {{end}}
+                </div>
+                <div class="mp-product-row__content">
+                    <a href="/produkt/{{.Slug}}" class="mp-product-row__title">{{.Title}}</a>
+                    <p class="mp-product-row__desc">{{.ShortDescription}}</p>
+                    <div class="mp-product-row__meta">
+                        {{if gt .Rating 0}}
+                        <div class="mp-product-row__rating">
+                            <span class="mp-stars">★★★★★</span>
+                            <span>{{printf "%.1f" .Rating}}</span>
+                        </div>
+                        {{end}}
+                        <span class="mp-product-row__offers">{{.OfferCount}} ponúk</span>
+                    </div>
+                </div>
+                <div class="mp-product-row__price-box">
+                    <span class="mp-product-row__price">{{printf "%.2f" .MinPrice}} €</span>
+                    <a href="/produkt/{{.Slug}}" class="mp-product-row__btn">
+                        Porovnať ceny
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </a>
+                </div>
+            </div>
+            {{else}}
+            <div class="mp-no-products">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M8 15s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></svg>
+                <p>Zatiaľ žiadne produkty</p>
+            </div>
+            {{end}}
+        </div>
+    </div>
+</section>
+
+<!-- How it works -->
+<section class="mp-how-section" style="padding: 60px 0; background: #fff;">
+    <div class="mp-container">
+        <h2 class="mp-section-title">Ako to funguje?</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 32px; margin-top: 40px;">
+            <div style="text-align: center;">
+                <div style="width: 80px; height: 80px; margin: 0 auto 16px; background: linear-gradient(135deg, #ff6b35, #f97316); border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 32px;">🔍</div>
+                <h3 style="font-size: 18px; margin-bottom: 8px;">1. Vyhľadajte produkt</h3>
+                <p style="color: #6b7280; font-size: 14px;">Zadajte názov produktu alebo vyberte kategóriu</p>
+            </div>
+            <div style="text-align: center;">
+                <div style="width: 80px; height: 80px; margin: 0 auto 16px; background: linear-gradient(135deg, #ff6b35, #f97316); border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 32px;">📊</div>
+                <h3 style="font-size: 18px; margin-bottom: 8px;">2. Porovnajte ceny</h3>
+                <p style="color: #6b7280; font-size: 14px;">Pozrite si ponuky z rôznych obchodov na jednom mieste</p>
+            </div>
+            <div style="text-align: center;">
+                <div style="width: 80px; height: 80px; margin: 0 auto 16px; background: linear-gradient(135deg, #ff6b35, #f97316); border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 32px;">💰</div>
+                <h3 style="font-size: 18px; margin-bottom: 8px;">3. Ušetrite</h3>
+                <p style="color: #6b7280; font-size: 14px;">Vyberte najlepšiu ponuku a nakupujte lacnejšie</p>
+            </div>
+        </div>
+    </div>
+</section>
