@@ -6,7 +6,8 @@ import {
   ChevronDown, ChevronLeft, ChevronRight, Check, X
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { api, type Product } from "@/lib/api"
+import { api } from "@/lib/api"
+import type { Product } from "@/lib/types"
 import { formatPrice, cn } from "@/lib/utils"
 import Link from "next/link"
 import Image from "next/image"
