@@ -7,6 +7,7 @@ export interface Product {
   ean?: string
   sku?: string
   mpn?: string
+  brand?: string
   brand_id?: string
   brand_name?: string
   category_id: string
@@ -17,12 +18,18 @@ export interface Product {
   price_max: number
   offer_count: number
   is_active: boolean
+  is_featured?: boolean
   stock_status: 'instock' | 'outofstock' | 'onbackorder'
   stock_quantity?: number
   attributes?: ProductAttribute[]
   rating?: number
   review_count?: number
+  meta_title?: string
+  meta_description?: string
+  seo_title?: string
+  seo_description?: string
   created_at: string
+  updated_at?: string
 }
 
 export interface ProductImage {
@@ -37,6 +44,7 @@ export interface ProductAttribute {
   id?: string
   name: string
   value: string
+  position?: number
   filterable?: boolean
   visible?: boolean
 }
@@ -76,6 +84,7 @@ export interface Category {
   description?: string
   parent_id?: string | null
   image_url?: string
+  icon?: string
   emoji?: string
   product_count: number
   children?: Category[]
