@@ -1,13 +1,32 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
+
+interface StoredImage {
+  id: string
+  url: string
+  alt?: string
+  is_main: boolean
+}
+
+interface CategoryOption {
+  id: string
+  name: string
+  depth: number
+  path: string
+}
 
 export default function NewProductPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<'basic' | 'media' | 'attributes' | 'seo'>('basic')
+  const [categories, setCategories] = useState<CategoryOption[]>([])
+  const [images, setImages] = useState<StoredImage[]>([])
+  const [attributes, setAttributes] = useState<{ name: string; value: string }[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const dropZoneRef = useRef<HTMLDivElement>(null)
   
   const [form, setForm] = useState({
     title: '',
@@ -18,7 +37,7 @@ export default function NewProductPage() {
     sku: '',
     mpn: '',
     category_id: '',
-    brand_id: '',
+    brand_name: '',
     price_min: 0,
     price_max: 0,
     stock_status: 'instock' as const,
@@ -27,6 +46,17 @@ export default function NewProductPage() {
     seo_title: '',
     seo_description: '',
   })
+
+  useEffect(() => {
+    loadCategories()
+  }, [])
+
+  async function loadCategories() {
+    const cats = await api.getCategoriesFlat()
+    if (cats) {
+      setCategories(cats)
+    }
+  }
 
   const generateSlug = (title: string) => {
     return title
@@ -41,18 +71,112 @@ export default function NewProductPage() {
     setForm(f => ({ ...f, title, slug: f.slug || generateSlug(title) }))
   }
 
+  // Image handling
+  const handleFileSelect = async (files: FileList | null) => {
+    if (!files || files.length === 0) return
+    
+    try {
+      const newImages = await api.uploadImages(files)
+      setImages(prev => {
+        const updated = [...prev, ...newImages]
+        // Mark first as main if no main exists
+        if (!updated.some(img => img.is_main) && updated.length > 0) {
+          updated[0].is_main = true
+        }
+        return updated
+      })
+    } catch (error) {
+      console.error('Upload error:', error)
+      alert('Chyba pri nahrávaní obrázkov')
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dropZoneRef.current?.classList.remove('drag-over')
+    handleFileSelect(e.dataTransfer.files)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dropZoneRef.current?.classList.add('drag-over')
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dropZoneRef.current?.classList.remove('drag-over')
+  }
+
+  const removeImage = (imageId: string) => {
+    setImages(prev => {
+      const filtered = prev.filter(img => img.id !== imageId)
+      // If we removed main, make first one main
+      if (filtered.length > 0 && !filtered.some(img => img.is_main)) {
+        filtered[0].is_main = true
+      }
+      return filtered
+    })
+  }
+
+  const setMainImage = (imageId: string) => {
+    setImages(prev => prev.map(img => ({
+      ...img,
+      is_main: img.id === imageId
+    })))
+  }
+
+  const moveImage = (imageId: string, direction: 'up' | 'down') => {
+    setImages(prev => {
+      const index = prev.findIndex(img => img.id === imageId)
+      if (index === -1) return prev
+      
+      const newIndex = direction === 'up' ? index - 1 : index + 1
+      if (newIndex < 0 || newIndex >= prev.length) return prev
+      
+      const newImages = [...prev]
+      ;[newImages[index], newImages[newIndex]] = [newImages[newIndex], newImages[index]]
+      return newImages.map((img, i) => ({ ...img, position: i }))
+    })
+  }
+
+  // Attributes handling
+  const addAttribute = () => {
+    setAttributes(prev => [...prev, { name: '', value: '' }])
+  }
+
+  const updateAttribute = (index: number, field: 'name' | 'value', value: string) => {
+    setAttributes(prev => prev.map((attr, i) => 
+      i === index ? { ...attr, [field]: value } : attr
+    ))
+  }
+
+  const removeAttribute = (index: number) => {
+    setAttributes(prev => prev.filter((_, i) => i !== index))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     
     try {
-      const result = await api.createProduct(form)
+      const productData = {
+        ...form,
+        images: images,
+        image_url: images.find(img => img.is_main)?.url || images[0]?.url || '',
+        attributes: attributes.filter(a => a.name && a.value),
+      }
+      
+      const result = await api.createProduct(productData)
       if (result?.id) {
         router.push('/admin/products')
       } else {
         alert('Chyba pri vytváraní produktu')
       }
     } catch (error) {
+      console.error('Error:', error)
       alert('Chyba pri vytváraní produktu')
     }
     
@@ -61,6 +185,102 @@ export default function NewProductPage() {
 
   return (
     <div>
+      <style jsx>{`
+        .image-dropzone {
+          border: 2px dashed #d1d5db;
+          border-radius: 12px;
+          padding: 40px;
+          text-align: center;
+          background: #f9fafb;
+          transition: all 0.2s;
+          cursor: pointer;
+        }
+        .image-dropzone:hover, .image-dropzone.drag-over {
+          border-color: #ff6b35;
+          background: #fff5f0;
+        }
+        .image-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+          gap: 16px;
+          margin-top: 20px;
+        }
+        .image-item {
+          position: relative;
+          border-radius: 8px;
+          overflow: hidden;
+          background: #f3f4f6;
+          aspect-ratio: 1;
+        }
+        .image-item img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        .image-item-overlay {
+          position: absolute;
+          inset: 0;
+          background: rgba(0,0,0,0.5);
+          opacity: 0;
+          transition: opacity 0.2s;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          gap: 8px;
+        }
+        .image-item:hover .image-item-overlay {
+          opacity: 1;
+        }
+        .image-item-btn {
+          padding: 6px 12px;
+          background: #fff;
+          border: none;
+          border-radius: 6px;
+          font-size: 12px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+        .image-item-btn.delete {
+          background: #fee2e2;
+          color: #dc2626;
+        }
+        .image-item-btn.main {
+          background: #dcfce7;
+          color: #16a34a;
+        }
+        .image-main-badge {
+          position: absolute;
+          top: 8px;
+          left: 8px;
+          background: #ff6b35;
+          color: #fff;
+          font-size: 10px;
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-weight: 600;
+        }
+        .attribute-row {
+          display: flex;
+          gap: 12px;
+          margin-bottom: 12px;
+          align-items: flex-start;
+        }
+        .attribute-row .admin-input {
+          flex: 1;
+        }
+        .attribute-remove {
+          padding: 10px;
+          background: #fee2e2;
+          color: #dc2626;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+        }
+      `}</style>
+
       <div className="admin-header">
         <h1 className="admin-title">Nový produkt</h1>
         <div style={{display:'flex',gap:12}}>
@@ -89,6 +309,11 @@ export default function NewProductPage() {
                 onClick={() => setActiveTab(tab.id as any)}
               >
                 {tab.label}
+                {tab.id === 'media' && images.length > 0 && (
+                  <span style={{marginLeft: 6, background: '#ff6b35', color: '#fff', padding: '2px 6px', borderRadius: 10, fontSize: 11}}>
+                    {images.length}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -121,10 +346,31 @@ export default function NewProductPage() {
                   </div>
 
                   <div className="admin-form-group">
-                    <label className="admin-label">Kategória</label>
-                    <select className="admin-select" value={form.category_id} onChange={e => setForm(f => ({ ...f, category_id: e.target.value }))}>
+                    <label className="admin-label">Kategória *</label>
+                    <select 
+                      className="admin-select" 
+                      value={form.category_id} 
+                      onChange={e => setForm(f => ({ ...f, category_id: e.target.value }))}
+                      required
+                    >
                       <option value="">Vyberte kategóriu</option>
+                      {categories.map(cat => (
+                        <option key={cat.id} value={cat.id}>
+                          {'—'.repeat(cat.depth)} {cat.name}
+                        </option>
+                      ))}
                     </select>
+                  </div>
+
+                  <div className="admin-form-group">
+                    <label className="admin-label">Značka</label>
+                    <input
+                      type="text"
+                      className="admin-input"
+                      value={form.brand_name}
+                      onChange={e => setForm(f => ({ ...f, brand_name: e.target.value }))}
+                      placeholder="Apple"
+                    />
                   </div>
 
                   <div className="admin-form-group">
@@ -186,13 +432,14 @@ export default function NewProductPage() {
 
                   <div className="admin-grid admin-grid-2" style={{marginBottom: 16}}>
                     <div className="admin-form-group">
-                      <label className="admin-label">Cena od (€)</label>
+                      <label className="admin-label">Cena od (€) *</label>
                       <input
                         type="number"
                         step="0.01"
                         className="admin-input"
-                        value={form.price_min}
+                        value={form.price_min || ''}
                         onChange={e => setForm(f => ({ ...f, price_min: parseFloat(e.target.value) || 0 }))}
+                        required
                       />
                     </div>
                     <div className="admin-form-group">
@@ -201,7 +448,7 @@ export default function NewProductPage() {
                         type="number"
                         step="0.01"
                         className="admin-input"
-                        value={form.price_max}
+                        value={form.price_max || ''}
                         onChange={e => setForm(f => ({ ...f, price_max: parseFloat(e.target.value) || 0 }))}
                       />
                     </div>
@@ -244,28 +491,123 @@ export default function NewProductPage() {
 
             {activeTab === 'media' && (
               <div>
-                <div style={{border:'2px dashed #d1d5db',borderRadius:12,padding:40,textAlign:'center',background:'#f9fafb'}}>
-                  <div style={{fontSize:48,marginBottom:12}}>📷</div>
-                  <p style={{color:'#6b7280',marginBottom:12}}>Pretiahnite obrázky sem alebo kliknite pre nahratie</p>
-                  <input type="file" accept="image/*" multiple style={{display:'none'}} id="images" />
-                  <label htmlFor="images" className="admin-btn admin-btn-outline" style={{cursor:'pointer'}}>
-                    Vybrať obrázky
-                  </label>
+                <div 
+                  ref={dropZoneRef}
+                  className="image-dropzone"
+                  onClick={() => fileInputRef.current?.click()}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                >
+                  <div style={{fontSize: 48, marginBottom: 12}}>📷</div>
+                  <p style={{color: '#6b7280', marginBottom: 12}}>
+                    Pretiahnite obrázky sem alebo kliknite pre nahratie
+                  </p>
+                  <p style={{color: '#9ca3af', fontSize: 13}}>
+                    Podporované formáty: JPG, PNG, WebP, GIF
+                  </p>
                 </div>
+                
+                <input 
+                  ref={fileInputRef}
+                  type="file" 
+                  accept="image/*" 
+                  multiple 
+                  style={{display: 'none'}}
+                  onChange={(e) => handleFileSelect(e.target.files)}
+                />
+
+                {images.length > 0 && (
+                  <div className="image-grid">
+                    {images.map((image, index) => (
+                      <div key={image.id} className="image-item">
+                        <img src={image.url} alt={image.alt || ''} />
+                        {image.is_main && (
+                          <span className="image-main-badge">Hlavný</span>
+                        )}
+                        <div className="image-item-overlay">
+                          {!image.is_main && (
+                            <button 
+                              type="button"
+                              className="image-item-btn main"
+                              onClick={() => setMainImage(image.id)}
+                            >
+                              ⭐ Nastaviť hlavný
+                            </button>
+                          )}
+                          <div style={{display: 'flex', gap: 4}}>
+                            <button 
+                              type="button"
+                              className="image-item-btn"
+                              onClick={() => moveImage(image.id, 'up')}
+                              disabled={index === 0}
+                            >
+                              ↑
+                            </button>
+                            <button 
+                              type="button"
+                              className="image-item-btn"
+                              onClick={() => moveImage(image.id, 'down')}
+                              disabled={index === images.length - 1}
+                            >
+                              ↓
+                            </button>
+                          </div>
+                          <button 
+                            type="button"
+                            className="image-item-btn delete"
+                            onClick={() => removeImage(image.id)}
+                          >
+                            🗑️ Odstrániť
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
             {activeTab === 'attributes' && (
               <div>
-                <p style={{color:'#6b7280',marginBottom:16}}>Pridajte vlastné atribúty produktu (napr. Farba, Veľkosť, Materiál...)</p>
-                <button type="button" className="admin-btn admin-btn-outline">
+                <p style={{color: '#6b7280', marginBottom: 16}}>
+                  Pridajte vlastné atribúty produktu (napr. Farba, Veľkosť, Materiál...)
+                </p>
+                
+                {attributes.map((attr, index) => (
+                  <div key={index} className="attribute-row">
+                    <input
+                      type="text"
+                      className="admin-input"
+                      placeholder="Názov atribútu"
+                      value={attr.name}
+                      onChange={(e) => updateAttribute(index, 'name', e.target.value)}
+                    />
+                    <input
+                      type="text"
+                      className="admin-input"
+                      placeholder="Hodnota"
+                      value={attr.value}
+                      onChange={(e) => updateAttribute(index, 'value', e.target.value)}
+                    />
+                    <button 
+                      type="button" 
+                      className="attribute-remove"
+                      onClick={() => removeAttribute(index)}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                
+                <button type="button" className="admin-btn admin-btn-outline" onClick={addAttribute}>
                   + Pridať atribút
                 </button>
               </div>
             )}
 
             {activeTab === 'seo' && (
-              <div style={{maxWidth:600}}>
+              <div style={{maxWidth: 600}}>
                 <div className="admin-form-group">
                   <label className="admin-label">SEO Titulok</label>
                   <input
@@ -276,7 +618,7 @@ export default function NewProductPage() {
                     placeholder={form.title || 'Názov produktu'}
                     maxLength={60}
                   />
-                  <small style={{color:'#9ca3af'}}>{form.seo_title.length}/60 znakov</small>
+                  <small style={{color: '#9ca3af'}}>{form.seo_title.length}/60 znakov</small>
                 </div>
 
                 <div className="admin-form-group">
@@ -289,14 +631,14 @@ export default function NewProductPage() {
                     maxLength={160}
                     rows={3}
                   />
-                  <small style={{color:'#9ca3af'}}>{form.seo_description.length}/160 znakov</small>
+                  <small style={{color: '#9ca3af'}}>{form.seo_description.length}/160 znakov</small>
                 </div>
 
-                <div style={{marginTop:24,padding:16,background:'#f9fafb',borderRadius:8}}>
-                  <p style={{fontSize:12,color:'#6b7280',marginBottom:8}}>Náhľad vo vyhľadávači:</p>
-                  <div style={{color:'#1a0dab',fontSize:18,marginBottom:4}}>{form.seo_title || form.title || 'Názov produktu'}</div>
-                  <div style={{color:'#006621',fontSize:13,marginBottom:4}}>megabuy.sk › produkt › {form.slug || 'url-produktu'}</div>
-                  <div style={{color:'#545454',fontSize:13}}>{form.seo_description || form.short_description || 'Popis produktu...'}</div>
+                <div style={{marginTop: 24, padding: 16, background: '#f9fafb', borderRadius: 8}}>
+                  <p style={{fontSize: 12, color: '#6b7280', marginBottom: 8}}>Náhľad vo vyhľadávači:</p>
+                  <div style={{color: '#1a0dab', fontSize: 18, marginBottom: 4}}>{form.seo_title || form.title || 'Názov produktu'}</div>
+                  <div style={{color: '#006621', fontSize: 13, marginBottom: 4}}>megabuy.sk › produkt › {form.slug || 'url-produktu'}</div>
+                  <div style={{color: '#545454', fontSize: 13}}>{form.seo_description || form.short_description || 'Popis produktu...'}</div>
                 </div>
               </div>
             )}

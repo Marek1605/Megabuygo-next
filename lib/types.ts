@@ -26,19 +26,19 @@ export interface Product {
 }
 
 export interface ProductImage {
-  id: string
+  id?: string
   url: string
   alt?: string
-  position: number
-  is_main: boolean
+  position?: number
+  is_main?: boolean
 }
 
 export interface ProductAttribute {
-  id: string
+  id?: string
   name: string
   value: string
-  filterable: boolean
-  visible: boolean
+  filterable?: boolean
+  visible?: boolean
 }
 
 export interface Offer {
@@ -74,7 +74,7 @@ export interface Category {
   name: string
   slug: string
   description?: string
-  parent_id?: string
+  parent_id?: string | null
   image_url?: string
   emoji?: string
   product_count: number
