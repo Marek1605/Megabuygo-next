@@ -1,74 +1,9 @@
-import { API_URL } from "./utils"
+import type { 
+  Product, Offer, Vendor, Category, Brand, Feed, 
+  DashboardStats, ApiResponse, PaginatedResponse 
+} from './types'
 
-export interface Product {
-  id: string
-  title: string
-  slug: string
-  description?: string
-  ean?: string
-  sku?: string
-  image_url?: string
-  price_min: number
-  price_max: number
-  offer_count: number
-  is_active: boolean
-  category_id: string
-  category_name?: string
-  brand_id?: string
-  brand_name?: string
-  created_at: string
-}
-
-export interface Category {
-  id: string
-  name: string
-  slug: string
-  parent_id?: string
-  product_count?: number
-  children?: Category[]
-}
-
-export interface Vendor {
-  id: string
-  company_name: string
-  email: string
-  website?: string
-  logo_url?: string
-  status: string
-  credit_balance: number
-  default_cpc: number
-  created_at: string
-}
-
-export interface Offer {
-  id: string
-  product_id: string
-  vendor_id: string
-  vendor_name: string
-  price: number
-  original_price?: number
-  url: string
-  availability: string
-  shipping_price?: number
-  delivery_time?: string
-}
-
-export interface Feed {
-  id: number
-  name: string
-  feed_url: string
-  feed_type: string
-  active: boolean
-  last_import_at?: string
-  last_import_status?: string
-  products_imported: number
-}
-
-export interface ApiResponse<T> {
-  success: boolean
-  data?: T
-  error?: string
-}
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
 
 class ApiClient {
   private baseUrl: string
@@ -84,7 +19,7 @@ class ApiClient {
     try {
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
           ...options.headers,
         },
         ...options,
@@ -93,32 +28,38 @@ class ApiClient {
       const data = await response.json()
       
       if (!response.ok) {
-        return { success: false, error: data.error || "Request failed" }
+        return { success: false, error: data.error || 'Request failed' }
       }
       
-      return data
+      return { success: true, data: data.data || data }
     } catch (error) {
-      return { success: false, error: "Network error" }
+      console.error('API Error:', error)
+      return { success: false, error: 'Network error' }
     }
   }
 
-  // Products
+  // ============ PRODUCTS ============
   async getProducts(params?: {
     page?: number
     limit?: number
     search?: string
     category_id?: string
+    brand_id?: string
     status?: string
     sort?: string
     order?: string
+    price_min?: number
+    price_max?: number
   }) {
     const searchParams = new URLSearchParams()
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
-        if (value !== undefined) searchParams.set(key, String(value))
+        if (value !== undefined && value !== '') {
+          searchParams.set(key, String(value))
+        }
       })
     }
-    return this.request<{ products: Product[]; total: number; page: number; limit: number }>(
+    return this.request<PaginatedResponse<Product>>(
       `/api/v1/admin/products?${searchParams}`
     )
   }
@@ -127,67 +68,233 @@ class ApiClient {
     return this.request<Product>(`/api/v1/admin/products/${id}`)
   }
 
+  async getProductBySlug(slug: string) {
+    return this.request<Product>(`/api/v1/products/${slug}`)
+  }
+
   async createProduct(product: Partial<Product>) {
-    return this.request<{ id: string }>("/api/v1/admin/products", {
-      method: "POST",
+    return this.request<{ id: string }>('/api/v1/admin/products', {
+      method: 'POST',
       body: JSON.stringify(product),
     })
   }
 
   async updateProduct(id: string, product: Partial<Product>) {
     return this.request<void>(`/api/v1/admin/products/${id}`, {
-      method: "PUT",
+      method: 'PUT',
       body: JSON.stringify(product),
     })
   }
 
   async deleteProduct(id: string) {
     return this.request<void>(`/api/v1/admin/products/${id}`, {
-      method: "DELETE",
+      method: 'DELETE',
     })
   }
 
-  // Categories
-  async getCategories() {
-    return this.request<{ categories: Category[] }>("/api/v1/categories")
+  async uploadProductImage(productId: string, file: File, isMain: boolean = false) {
+    const formData = new FormData()
+    formData.append('image', file)
+    formData.append('is_main', String(isMain))
+    
+    return this.request<{ url: string }>(`/api/v1/admin/products/${productId}/images`, {
+      method: 'POST',
+      headers: {}, // Let browser set Content-Type for FormData
+      body: formData as any,
+    })
   }
 
-  // Vendors
-  async getVendors(params?: { page?: number; limit?: number }) {
+  async deleteProductImage(productId: string, imageId: string) {
+    return this.request<void>(`/api/v1/admin/products/${productId}/images/${imageId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  // ============ OFFERS ============
+  async getProductOffers(productId: string) {
+    return this.request<Offer[]>(`/api/v1/products/${productId}/offers`)
+  }
+
+  async createOffer(offer: Partial<Offer>) {
+    return this.request<{ id: string }>('/api/v1/admin/offers', {
+      method: 'POST',
+      body: JSON.stringify(offer),
+    })
+  }
+
+  async updateOffer(id: string, offer: Partial<Offer>) {
+    return this.request<void>(`/api/v1/admin/offers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(offer),
+    })
+  }
+
+  async deleteOffer(id: string) {
+    return this.request<void>(`/api/v1/admin/offers/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
+  // ============ CLICK TRACKING ============
+  async trackClick(offerId: string) {
+    return this.request<{ redirect_url: string }>(`/api/v1/go/${offerId}`, {
+      method: 'POST',
+    })
+  }
+
+  // ============ VENDORS ============
+  async getVendors(params?: { page?: number; limit?: number; status?: string }) {
     const searchParams = new URLSearchParams()
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined) searchParams.set(key, String(value))
       })
     }
-    return this.request<{ vendors: Vendor[]; total: number }>(
+    return this.request<PaginatedResponse<Vendor>>(
       `/api/v1/admin/vendors?${searchParams}`
     )
   }
 
-  // Feeds
-  async getFeeds(params?: { page?: number; limit?: number }) {
+  async getVendor(id: string) {
+    return this.request<Vendor>(`/api/v1/admin/vendors/${id}`)
+  }
+
+  async createVendor(vendor: Partial<Vendor>) {
+    return this.request<{ id: string }>('/api/v1/admin/vendors', {
+      method: 'POST',
+      body: JSON.stringify(vendor),
+    })
+  }
+
+  async updateVendor(id: string, vendor: Partial<Vendor>) {
+    return this.request<void>(`/api/v1/admin/vendors/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(vendor),
+    })
+  }
+
+  async addVendorCredit(id: string, amount: number, note?: string) {
+    return this.request<void>(`/api/v1/admin/vendors/${id}/credit`, {
+      method: 'POST',
+      body: JSON.stringify({ amount, note }),
+    })
+  }
+
+  // ============ CATEGORIES ============
+  async getCategories(params?: { parent_id?: string; flat?: boolean }) {
     const searchParams = new URLSearchParams()
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined) searchParams.set(key, String(value))
       })
     }
-    return this.request<{ feeds: Feed[]; total: number }>(
-      `/api/v1/admin/feeds?${searchParams}`
-    )
+    return this.request<Category[]>(`/api/v1/categories?${searchParams}`)
   }
 
-  // Dashboard stats
+  async getCategoryTree() {
+    return this.request<Category[]>('/api/v1/categories/tree')
+  }
+
+  async getCategory(id: string) {
+    return this.request<Category>(`/api/v1/admin/categories/${id}`)
+  }
+
+  async createCategory(category: Partial<Category>) {
+    return this.request<{ id: string }>('/api/v1/admin/categories', {
+      method: 'POST',
+      body: JSON.stringify(category),
+    })
+  }
+
+  async updateCategory(id: string, category: Partial<Category>) {
+    return this.request<void>(`/api/v1/admin/categories/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(category),
+    })
+  }
+
+  async deleteCategory(id: string) {
+    return this.request<void>(`/api/v1/admin/categories/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
+  // ============ BRANDS ============
+  async getBrands(params?: { page?: number; limit?: number }) {
+    const searchParams = new URLSearchParams()
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) searchParams.set(key, String(value))
+      })
+    }
+    return this.request<PaginatedResponse<Brand>>(`/api/v1/brands?${searchParams}`)
+  }
+
+  async createBrand(brand: Partial<Brand>) {
+    return this.request<{ id: string }>('/api/v1/admin/brands', {
+      method: 'POST',
+      body: JSON.stringify(brand),
+    })
+  }
+
+  // ============ FEEDS ============
+  async getFeeds(params?: { page?: number; limit?: number; vendor_id?: string }) {
+    const searchParams = new URLSearchParams()
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) searchParams.set(key, String(value))
+      })
+    }
+    return this.request<PaginatedResponse<Feed>>(`/api/v1/admin/feeds?${searchParams}`)
+  }
+
+  async getFeed(id: string) {
+    return this.request<Feed>(`/api/v1/admin/feeds/${id}`)
+  }
+
+  async createFeed(feed: Partial<Feed>) {
+    return this.request<{ id: string }>('/api/v1/admin/feeds', {
+      method: 'POST',
+      body: JSON.stringify(feed),
+    })
+  }
+
+  async updateFeed(id: string, feed: Partial<Feed>) {
+    return this.request<void>(`/api/v1/admin/feeds/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(feed),
+    })
+  }
+
+  async runFeed(id: string) {
+    return this.request<void>(`/api/v1/admin/feeds/${id}/run`, {
+      method: 'POST',
+    })
+  }
+
+  async deleteFeed(id: string) {
+    return this.request<void>(`/api/v1/admin/feeds/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
+  // ============ DASHBOARD ============
   async getDashboardStats() {
-    return this.request<{
-      total_products: number
-      total_vendors: number
-      total_categories: number
-      total_clicks: number
-      today_clicks: number
-      total_revenue: number
-    }>("/api/v1/admin/dashboard")
+    return this.request<DashboardStats>('/api/v1/admin/dashboard')
+  }
+
+  async getClickStats(params?: { 
+    start_date?: string
+    end_date?: string
+    vendor_id?: string 
+  }) {
+    const searchParams = new URLSearchParams()
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) searchParams.set(key, String(value))
+      })
+    }
+    return this.request<any>(`/api/v1/admin/clicks/stats?${searchParams}`)
   }
 }
 
