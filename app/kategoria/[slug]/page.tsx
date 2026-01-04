@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useRouter, useSearchParams, useParams } from 'next/navigation'
 import { Header } from '@/components/theme/Header'
 import { Footer } from '@/components/theme/Footer'
 import { api, formatPrice } from '@/lib/api'
@@ -11,58 +11,71 @@ interface Product {
   id: string
   title: string
   slug: string
-  description?: string
-  short_description?: string
   image_url?: string
-  images?: string[]
   price_min: number
   price_max: number
   brand?: string
-  ean?: string
-  sku?: string
   category_name?: string
-  category_slug?: string
-  stock_status?: string
-  affiliate_url?: string
+  offer_count?: number
 }
 
-interface Offer {
+interface Category {
   id: string
-  vendor_name: string
-  vendor_logo?: string
-  price: number
-  delivery_days?: string
-  shipping_price?: number
-  affiliate_url?: string
+  name: string
+  slug: string
+  parent_id?: string
+  product_count?: number
+  children?: Category[]
 }
 
-export default function ProductPage() {
+export default function CategoryPage() {
   const params = useParams()
   const slug = params.slug as string
+  const router = useRouter()
+  const searchParams = useSearchParams()
   
-  const [product, setProduct] = useState<Product | null>(null)
-  const [offers, setOffers] = useState<Offer[]>([])
-  const [categories, setCategories] = useState<any[]>([])
+  const [category, setCategory] = useState<Category | null>(null)
+  const [categories, setCategories] = useState<Category[]>([])
+  const [subcategories, setSubcategories] = useState<Category[]>([])
+  const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedImage, setSelectedImage] = useState(0)
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [brands, setBrands] = useState<string[]>([])
+  const [showFilters, setShowFilters] = useState(false)
+  
+  const [filters, setFilters] = useState({
+    min_price: searchParams.get('min_price') || '',
+    max_price: searchParams.get('max_price') || '',
+    brands: searchParams.get('brand')?.split(',').filter(Boolean) || [],
+    sort: searchParams.get('sort') || 'popular',
+    in_stock: searchParams.get('in_stock') === 'true'
+  })
+
+  const limit = 24
 
   useEffect(() => {
     if (slug) {
-      loadProduct()
+      loadCategory()
       loadCategories()
     }
   }, [slug])
 
-  async function loadProduct() {
-    setLoading(true)
-    const data = await api.getProductBySlug(slug)
-    if (data) {
-      setProduct(data)
-      if (data.id) {
-        const offersData = await api.getProductOffers(data.id)
-        if (offersData && Array.isArray(offersData)) {
-          setOffers(offersData)
-        }
+  useEffect(() => {
+    if (category) {
+      loadProducts()
+    }
+  }, [category, page, filters])
+
+  async function loadCategory() {
+    const cat = await api.getCategoryBySlug(slug)
+    if (cat) {
+      setCategory(cat)
+      const allCats = await api.getCategoriesFlat()
+      if (allCats && Array.isArray(allCats)) {
+        const subs = allCats.filter((c: Category) => c.parent_id === cat.id)
+        setSubcategories(subs)
       }
     }
     setLoading(false)
@@ -75,27 +88,51 @@ export default function ProductPage() {
     }
   }
 
-  const allImages = product ? [product.image_url, ...(product.images || [])].filter(Boolean) as string[] : []
-
-  if (loading) {
-    return (
-      <>
-        <Header categories={categories} />
-        <main style={{ padding: '40px 20px', minHeight: '60vh', textAlign: 'center' }}>
-          <p>Nac�tavam produkt...</p>
-        </main>
-        <Footer />
-      </>
-    )
+  async function loadProducts() {
+    if (!category) return
+    
+    setLoading(true)
+    const params: any = { page, limit, category: slug }
+    if (filters.min_price) params.min_price = filters.min_price
+    if (filters.max_price) params.max_price = filters.max_price
+    if (filters.brands.length > 0) params.brand = filters.brands.join(',')
+    if (filters.sort) params.sort = filters.sort
+    
+    const data = await api.getProducts(params)
+    if (data) {
+      setProducts(data.items || [])
+      setTotal(data.total || 0)
+      setTotalPages(data.total_pages || 1)
+      const uniqueBrands = Array.from(new Set((data.items || []).map((p: Product) => p.brand).filter(Boolean)))
+      setBrands(uniqueBrands as string[])
+    }
+    setLoading(false)
   }
 
-  if (!product) {
+  function applyFilters() {
+    setPage(1)
+    loadProducts()
+  }
+
+  function clearFilters() {
+    setFilters({ min_price: '', max_price: '', brands: [], sort: 'popular', in_stock: false })
+    setPage(1)
+  }
+
+  function toggleBrand(brand: string) {
+    setFilters(prev => ({
+      ...prev,
+      brands: prev.brands.includes(brand) ? prev.brands.filter(b => b !== brand) : [...prev.brands, brand]
+    }))
+  }
+
+  if (!category && !loading) {
     return (
       <>
         <Header categories={categories} />
         <main style={{ padding: '100px 20px', textAlign: 'center', minHeight: '60vh' }}>
-          <h1 style={{ fontSize: '2rem', marginBottom: '16px' }}>Produkt nebol n�jden�</h1>
-          <Link href="/" style={{ color: '#ff6b35' }}>? Sp�t na hlavn� str�nku</Link>
+          <h1 style={{ fontSize: '2rem', marginBottom: '16px' }}>Kategória nebola nájdená</h1>
+          <Link href="/" style={{ color: '#ff6b35' }}>← Späť na hlavnú stránku</Link>
         </main>
         <Footer />
       </>
@@ -106,97 +143,85 @@ export default function ProductPage() {
     <>
       <Header categories={categories} />
       <main style={{ background: '#f8fafc', minHeight: '100vh', padding: '20px' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-          <nav style={{ display: 'flex', gap: 8, padding: '16px 0', fontSize: 14, color: '#6b7280', flexWrap: 'wrap' }}>
+        <div style={{ maxWidth: 1400, margin: '0 auto' }}>
+          <nav style={{ display: 'flex', gap: 8, padding: '16px 0', fontSize: 14, color: '#6b7280' }}>
             <Link href="/" style={{ color: '#6b7280', textDecoration: 'none' }}>Domov</Link>
-            <span>�</span>
-            {product.category_slug && product.category_name && (
-              <>
-                <Link href={`/kategoria/${product.category_slug}`} style={{ color: '#6b7280', textDecoration: 'none' }}>{product.category_name}</Link>
-                <span>�</span>
-              </>
-            )}
-            <span style={{ color: '#1f2937', fontWeight: 500 }}>{product.title}</span>
+            <span>›</span>
+            <span style={{ color: '#1f2937', fontWeight: 500 }}>{category?.name || 'Kategória'}</span>
           </nav>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, marginBottom: 40 }}>
-            <div style={{ background: '#fff', borderRadius: 20, padding: 24 }}>
-              <div style={{ aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, borderRadius: 16, background: '#f9fafb' }}>
-                {allImages.length > 0 ? (
-                  <img src={allImages[selectedImage]} alt={product.title} style={{ maxWidth: '100%', maxHeight: 400, objectFit: 'contain' }} />
-                ) : (
-                  <span style={{ fontSize: 120, opacity: 0.3 }}>??</span>
-                )}
-              </div>
-              {allImages.length > 1 && (
-                <div style={{ display: 'flex', gap: 12, overflowX: 'auto' }}>
-                  {allImages.map((img, i) => (
-                    <div key={i} onClick={() => setSelectedImage(i)} style={{ width: 80, height: 80, borderRadius: 12, overflow: 'hidden', cursor: 'pointer', border: selectedImage === i ? '2px solid #ff6b35' : '2px solid transparent', background: '#f9fafb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div>
-              {product.brand && <div style={{ fontSize: 14, color: '#ff6b35', fontWeight: 600, marginBottom: 8, textTransform: 'uppercase' }}>{product.brand}</div>}
-              <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1f2937', margin: '0 0 16px', lineHeight: 1.3 }}>{product.title}</h1>
-              
-              <div style={{ display: 'flex', gap: 24, marginBottom: 24, fontSize: 14, color: '#6b7280' }}>
-                {product.ean && <span>?? EAN: {product.ean}</span>}
-                {product.sku && <span>??? SKU: {product.sku}</span>}
-              </div>
-
-              <div style={{ background: 'linear-gradient(135deg, #fff9f5, #fff)', border: '2px solid #ffe4d4', borderRadius: 20, padding: 24, marginBottom: 24 }}>
-                <div style={{ fontSize: 14, color: '#6b7280', marginBottom: 4 }}>Najni��ia cena</div>
-                <div style={{ fontSize: 36, fontWeight: 800, color: '#1f2937' }}>{formatPrice(product.price_min)}</div>
-                {product.price_max > product.price_min && (
-                  <div style={{ fontSize: 14, color: '#6b7280', marginTop: 4 }}>a� {formatPrice(product.price_max)} z {offers.length || 1} obchodov</div>
-                )}
-                <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
-                  {offers.length > 0 && offers[0].affiliate_url ? (
-                    <a href={offers[0].affiliate_url} target="_blank" rel="noopener noreferrer" style={{ flex: 1, padding: '16px 24px', background: 'linear-gradient(135deg, #ff6b35, #ff8c5a)', color: '#fff', border: 'none', borderRadius: 12, fontSize: 16, fontWeight: 600, textDecoration: 'none', textAlign: 'center' }}>
-                      ?? K�pit za {formatPrice(product.price_min)}
-                    </a>
-                  ) : (
-                    <span style={{ flex: 1, padding: '16px 24px', background: '#ccc', color: '#fff', borderRadius: 12, fontSize: 16, fontWeight: 600, textAlign: 'center' }}>Moment�lne nedostupn�</span>
-                  )}
-                </div>
-              </div>
-
-              {product.short_description && (
-                <p style={{ color: '#4b5563', lineHeight: 1.6 }}>{product.short_description}</p>
-              )}
-            </div>
+          <div style={{ marginBottom: 24 }}>
+            <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1f2937', margin: '0 0 8px' }}>{category?.name}</h1>
+            <p style={{ fontSize: 14, color: '#6b7280' }}>{total} produktov</p>
           </div>
 
-          {offers.length > 0 && (
-            <section style={{ background: '#fff', borderRadius: 20, padding: 24, marginBottom: 40 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 700, color: '#1f2937', margin: '0 0 20px' }}>?? Porovnanie cien ({offers.length} obchodov)</h2>
-              {offers.map((offer, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 20, padding: 20, border: '1px solid #e5e7eb', borderRadius: 16, marginBottom: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 180 }}>
-                    <div style={{ width: 48, height: 48, borderRadius: 10, background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>??</div>
-                    <span style={{ fontWeight: 600, color: '#1f2937' }}>{offer.vendor_name}</span>
+          {subcategories.length > 0 && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12, marginBottom: 32 }}>
+              {subcategories.map(sub => (
+                <Link key={sub.id} href={`/kategoria/${sub.slug}`} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, textDecoration: 'none' }}>
+                  <span style={{ fontSize: 24 }}>📦</span>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#1f2937' }}>{sub.name}</div>
+                    <div style={{ fontSize: 12, color: '#6b7280' }}>{sub.product_count || 0} produktov</div>
                   </div>
-                  <div style={{ flex: 1, fontSize: 14, color: '#6b7280' }}>
-                    {offer.delivery_days === '1-2' ? <span style={{ color: '#10b981', fontWeight: 500 }}>? Skladom</span> : <span>Dodanie: {offer.delivery_days || 'Na dopyt'}</span>}
-                  </div>
-                  <div style={{ fontSize: 24, fontWeight: 700, color: '#1f2937', minWidth: 120, textAlign: 'right' }}>{formatPrice(offer.price)}</div>
-                  {offer.affiliate_url && (
-                    <a href={offer.affiliate_url} target="_blank" rel="noopener noreferrer" style={{ padding: '12px 24px', background: '#ff6b35', color: '#fff', borderRadius: 10, fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>Do obchodu ?</a>
-                  )}
-                </div>
+                </Link>
               ))}
-            </section>
+            </div>
           )}
 
-          {product.description && (
-            <section style={{ background: '#fff', borderRadius: 20, padding: 24 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 700, color: '#1f2937', margin: '0 0 16px' }}>?? Popis produktu</h2>
-              <div style={{ fontSize: 15, lineHeight: 1.7, color: '#4b5563' }} dangerouslySetInnerHTML={{ __html: product.description }} />
-            </section>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, padding: '16px 20px', background: '#fff', borderRadius: 12 }}>
+            <span style={{ fontSize: 14, color: '#6b7280' }}>Nájdených: <strong>{total}</strong> produktov</span>
+            <select 
+              value={filters.sort}
+              onChange={e => { setFilters(prev => ({ ...prev, sort: e.target.value })); setPage(1) }}
+              style={{ padding: '8px 32px 8px 12px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 14 }}
+            >
+              <option value="popular">Najpopulárnejšie</option>
+              <option value="price_asc">Od najlacnejších</option>
+              <option value="price_desc">Od najdrahších</option>
+              <option value="newest">Najnovšie</option>
+            </select>
+          </div>
+
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: 60 }}>Načítavam...</div>
+          ) : products.length > 0 ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 20 }}>
+              {products.map(product => (
+                <div key={product.id} style={{ background: '#fff', borderRadius: 16, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+                  <Link href={`/produkt/${product.slug}`}>
+                    <div style={{ aspectRatio: '1', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, background: '#f9fafb' }}>
+                      {product.image_url ? (
+                        <img src={product.image_url} alt={product.title} style={{ maxWidth: '85%', maxHeight: 160, objectFit: 'contain' }} />
+                      ) : (
+                        <span style={{ fontSize: 60, opacity: 0.3 }}>📦</span>
+                      )}
+                    </div>
+                  </Link>
+                  <div style={{ padding: '16px 18px 20px' }}>
+                    {product.brand && <div style={{ fontSize: 12, color: '#ff6b35', fontWeight: 500, marginBottom: 4 }}>{product.brand}</div>}
+                    <h3 style={{ fontSize: 14, fontWeight: 600, color: '#1f2937', margin: '0 0 12px', lineHeight: 1.4, minHeight: 40, overflow: 'hidden' }}>
+                      <Link href={`/produkt/${product.slug}`} style={{ color: 'inherit', textDecoration: 'none' }}>{product.title}</Link>
+                    </h3>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: '#1f2937', marginBottom: 4 }}>{formatPrice(product.price_min)}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: 60, background: '#fff', borderRadius: 16 }}>
+              <div style={{ fontSize: 64 }}>📦</div>
+              <h3 style={{ fontSize: 20, fontWeight: 600, margin: '16px 0 8px' }}>Žiadne produkty</h3>
+              <p style={{ color: '#6b7280' }}>V tejto kategórii zatiaľ nie sú žiadne produkty</p>
+            </div>
+          )}
+
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 40 }}>
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={{ padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', cursor: 'pointer' }}>← Predošlá</button>
+              <span style={{ padding: '10px 16px' }}>Strana {page} z {totalPages}</span>
+              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', cursor: 'pointer' }}>Ďalšia →</button>
+            </div>
           )}
         </div>
       </main>
