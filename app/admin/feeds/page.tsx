@@ -76,7 +76,7 @@ export default function FeedsPage() {
   async function loadFeeds() {
     setLoading(true)
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/feeds`)
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/feeds`)
       const data = await response.json()
       if (data.success) {
         setFeeds(data.data || [])
@@ -98,7 +98,7 @@ export default function FeedsPage() {
     setFeedPreview(null)
     
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/feeds/preview`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/feeds/preview`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -133,7 +133,7 @@ export default function FeedsPage() {
     }
     
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/feeds`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/feeds`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newFeed),
@@ -157,7 +157,7 @@ export default function FeedsPage() {
     if (!confirm(`Naozaj chcete vymazať feed "${name}"?`)) return
     
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/feeds/${id}`, {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/feeds/${id}`, {
         method: 'DELETE',
       })
       loadFeeds()
@@ -183,7 +183,7 @@ export default function FeedsPage() {
     })
     
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/feeds/${feed.id}/import`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/feeds/${feed.id}/import`, {
         method: 'POST',
       })
       
@@ -211,7 +211,7 @@ export default function FeedsPage() {
   function pollProgress(feedId: string) {
     progressInterval.current = setInterval(async () => {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/admin/feeds/${feedId}/progress`)
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/feeds/${feedId}/progress`)
         const data = await response.json()
         
         if (data.success && data.data) {
