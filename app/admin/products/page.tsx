@@ -82,6 +82,24 @@ export default function ProductsPage() {
     if (cats) setCategories(cats)
   }
 
+  async function deleteAllProducts() {
+    if (!confirm("POZOR! Naozaj vymazat VSETKY produkty?")) return
+    if (!confirm("Ste si NAOZAJ isty? Toto sa neda vratit!")) return
+    setBulkProcessing(true)
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/products/all`, { method: "DELETE" })
+      const data = await res.json()
+      if (data.success) {
+        alert("Vsetky produkty vymazane: " + data.count)
+        loadProducts()
+        loadStats()
+      } else {
+        alert(data.error || "Chyba")
+      }
+    } catch (e) { alert("Chyba pri mazani") }
+    setBulkProcessing(false)
+  }
+
   async function loadStats() {
     const data = await api.getAdminProducts({ limit: 1 })
     if (data) {
@@ -653,6 +671,9 @@ export default function ProductsPage() {
           <Link href="/admin/feeds" className="admin-btn admin-btn-outline">
             📡 Importy
           </Link>
+          <button className="admin-btn" style={{background:"#dc2626"}} onClick={deleteAllProducts} disabled={bulkProcessing}>
+            {bulkProcessing ? "Mazem..." : "Vymazat vsetky"}
+          </button>
           <Link href="/admin/products/new" className="admin-btn">
             + Nový produkt
           </Link>
