@@ -1,5 +1,3 @@
-'use client'
-
 import { useState, useEffect } from 'react'
 
 interface AttributeStat {
@@ -29,7 +27,6 @@ export default function AdminFiltersPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [search, setSearch] = useState('')
-  const [sortBy, setSortBy] = useState<'product_count' | 'value_count' | 'name'>('product_count')
 
   useEffect(() => {
     loadData()
@@ -87,11 +84,7 @@ export default function AdminFiltersPage() {
 
   const filteredAttributes = attributes
     .filter(a => a.name.toLowerCase().includes(search.toLowerCase()))
-    .sort((a, b) => {
-      if (sortBy === 'name') return a.name.localeCompare(b.name)
-      if (sortBy === 'value_count') return b.value_count - a.value_count
-      return b.product_count - a.product_count
-    })
+    .sort((a, b) => b.product_count - a.product_count)
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center' }}>Nacitavam...</div>
 
@@ -120,19 +113,13 @@ export default function AdminFiltersPage() {
               onChange={e => setSearch(e.target.value)}
               style={{ flex: 1, padding: '10px 16px', border: '1px solid #e5e7eb', borderRadius: 8 }}
             />
-            <select value={sortBy} onChange={e => setSortBy(e.target.value as any)} style={{ padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: 8 }}>
-              <option value="product_count">Podla produktov</option>
-              <option value="value_count">Podla hodnot</option>
-              <option value="name">Podla nazvu</option>
-            </select>
           </div>
 
           <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
             <button onClick={() => selectTop(5)} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', cursor: 'pointer' }}>Top 5</button>
             <button onClick={() => selectTop(10)} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', cursor: 'pointer' }}>Top 10</button>
             <button onClick={() => selectTop(20)} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', cursor: 'pointer' }}>Top 20</button>
-            <button onClick={() => setSettings(s => ({ ...s, filterable_attributes: attributes.map(a => a.name) }))} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', cursor: 'pointer' }}>Vsetky</button>
-            <button onClick={() => setSettings(s => ({ ...s, filterable_attributes: [] }))} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', cursor: 'pointer' }}>Ziadne</button>
+            <button onClick={() => setSettings(s => ({ ...s, filterable_attributes: [] }))} style={{ padding: '8px 16px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fff', cursor: 'pointer' }}>Zrusit</button>
           </div>
 
           <div style={{ maxHeight: 500, overflowY: 'auto' }}>
@@ -142,7 +129,6 @@ export default function AdminFiltersPage() {
                   <th style={{ padding: 12, textAlign: 'left', width: 40 }}></th>
                   <th style={{ padding: 12, textAlign: 'left' }}>Nazov</th>
                   <th style={{ padding: 12, textAlign: 'left', width: 100 }}>Produkty</th>
-                  <th style={{ padding: 12, textAlign: 'left', width: 100 }}>Hodnoty</th>
                 </tr>
               </thead>
               <tbody>
@@ -157,7 +143,6 @@ export default function AdminFiltersPage() {
                     </td>
                     <td style={{ padding: 12, fontWeight: 500 }}>{attr.name}</td>
                     <td style={{ padding: 12, color: '#6b7280' }}>{attr.product_count}</td>
-                    <td style={{ padding: 12, color: '#6b7280' }}>{attr.value_count}</td>
                   </tr>
                 ))}
               </tbody>
@@ -183,16 +168,6 @@ export default function AdminFiltersPage() {
               <input type="checkbox" checked={settings.show_brand_filter} onChange={e => setSettings(s => ({ ...s, show_brand_filter: e.target.checked }))} style={{ width: 18, height: 18 }} />
               <span>Filter znacky</span>
             </label>
-
-            <div style={{ marginTop: 16 }}>
-              <label style={{ fontSize: 14, fontWeight: 500, display: 'block', marginBottom: 8 }}>Max hodnot na filter</label>
-              <input
-                type="number"
-                value={settings.max_values_per_filter}
-                onChange={e => setSettings(s => ({ ...s, max_values_per_filter: parseInt(e.target.value) || 20 }))}
-                style={{ width: '100%', padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: 8 }}
-              />
-            </div>
           </div>
 
           <div style={{ background: '#fff', borderRadius: 16, padding: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
@@ -200,11 +175,11 @@ export default function AdminFiltersPage() {
             {settings.filterable_attributes.length === 0 ? (
               <p style={{ color: '#6b7280' }}>Ziadne atributy nie su vybrane</p>
             ) : (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, maxHeight: 200, overflowY: 'auto' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {settings.filterable_attributes.map(name => (
                   <span key={name} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 10px', background: '#c9a87c', color: '#fff', borderRadius: 20, fontSize: 12 }}>
                     {name}
-                    <button onClick={() => toggleAttribute(name)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>×</button>
+                    <button onClick={() => toggleAttribute(name)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}>x</button>
                   </span>
                 ))}
               </div>
