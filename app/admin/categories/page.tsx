@@ -32,6 +32,25 @@ export default function CategoriesPage() {
     loadCategories()
   }, [])
 
+  const [deleting, setDeleting] = useState(false)
+
+  async function deleteAllCategories() {
+    if (!confirm("POZOR! Naozaj vymazat VSETKY kategorie?")) return
+    if (!confirm("Ste si NAOZAJ isty? Toto vymaze aj produkty z kategorii!")) return
+    setDeleting(true)
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/categories/all`, { method: "DELETE" })
+      const data = await res.json()
+      if (data.success) {
+        alert("Vsetky kategorie vymazane: " + data.count)
+        loadCategories()
+      } else {
+        alert(data.error || "Chyba")
+      }
+    } catch (e) { alert("Chyba pri mazani") }
+    setDeleting(false)
+  }
+
   async function loadCategories() {
     setLoading(true)
     const cats = await api.getCategoriesFlat()
@@ -230,6 +249,7 @@ export default function CategoriesPage() {
 
       <div className="admin-header">
         <h1 className="admin-title">Kategórie</h1>
+        <button className="admin-btn" style={{background:"#dc2626",marginRight:12}} onClick={deleteAllCategories} disabled={deleting}>{deleting ? "Mazem..." : "Vymazat vsetky"}</button>
         <button className="admin-btn" onClick={() => setShowForm(true)}>
           + Pridať kategóriu
         </button>
