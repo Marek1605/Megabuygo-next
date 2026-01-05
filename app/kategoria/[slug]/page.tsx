@@ -205,7 +205,7 @@ export default function CategoryPage() {
                   {activeFilterCount > 0 && <span className="filter-count">{activeFilterCount}</span>}
                 </div>
                 {activeFilterCount > 0 && (
-                  <button className="filter-clear" onClick={clearFilters}>Zruöit vöetky</button>
+                  <button className="filter-clear" onClick={clearFilters}>Zru≈°i≈• v≈°etky</button>
                 )}
               </div>
 
@@ -213,7 +213,7 @@ export default function CategoryPage() {
               <div className="filter-section">
                 <div className="filter-section-header" onClick={() => setCollapsed({...collapsed, price: !collapsed.price})}>
                   <span className="filter-section-title">Cena</span>
-                  <span className="filter-toggle">{collapsed.price ? '+' : '-'}</span>
+                  <span className="filter-toggle">{collapsed.price ? '+' : '‚àí'}</span>
                 </div>
                 {!collapsed.price && (
                   <>
@@ -221,14 +221,14 @@ export default function CategoryPage() {
                       <input 
                         type="number" 
                         className="price-input" 
-                        placeholder="Od Ä" 
+                        placeholder="Od ‚Ç¨" 
                         value={filters.min_price}
                         onChange={e => { setFilters({...filters, min_price: e.target.value}); setPage(1) }}
                       />
                       <input 
                         type="number" 
                         className="price-input" 
-                        placeholder="Do Ä" 
+                        placeholder="Do ‚Ç¨" 
                         value={filters.max_price}
                         onChange={e => { setFilters({...filters, max_price: e.target.value}); setPage(1) }}
                       />
@@ -236,7 +236,7 @@ export default function CategoryPage() {
                     <div className="price-pills">
                       {['50', '100', '200', '500'].map(p => (
                         <button key={p} className="price-pill" onClick={() => { setFilters({...filters, max_price: p}); setPage(1) }}>
-                          do {p} Ä
+                          do {p} ‚Ç¨
                         </button>
                       ))}
                     </div>
@@ -260,8 +260,8 @@ export default function CategoryPage() {
               {facets.brands && facets.brands.length > 0 && (
                 <div className="filter-section">
                   <div className="filter-section-header" onClick={() => setCollapsed({...collapsed, brands: !collapsed.brands})}>
-                    <span className="filter-section-title">Znacka</span>
-                    <span className="filter-toggle">{collapsed.brands ? '+' : '-'}</span>
+                    <span className="filter-section-title">Znaƒçka</span>
+                    <span className="filter-toggle">{collapsed.brands ? '+' : '‚àí'}</span>
                   </div>
                   {!collapsed.brands && (
                     <div className="brand-list">
@@ -287,7 +287,7 @@ export default function CategoryPage() {
           <main className="category-main">
             <div className="category-header">
               <div>
-                <h1 className="category-title">{category?.name || 'KategÛria'}</h1>
+                <h1 className="category-title">{category?.name || 'Kateg√≥ria'}</h1>
                 <div className="category-count">{total} produktov</div>
               </div>
               <select 
@@ -295,11 +295,11 @@ export default function CategoryPage() {
                 value={filters.sort}
                 onChange={e => { setFilters({...filters, sort: e.target.value}); setPage(1) }}
               >
-                <option value="popular">Najpred·vanejöie</option>
+                <option value="popular">Najpred√°vanej≈°ie</option>
                 <option value="price_asc">Cena vzostupne</option>
                 <option value="price_desc">Cena zostupne</option>
-                <option value="newest">Najnovöie</option>
-                <option value="name_asc">N·zov A-Z</option>
+                <option value="newest">Najnov≈°ie</option>
+                <option value="name_asc">N√°zov A-Z</option>
               </select>
             </div>
 
@@ -319,12 +319,12 @@ export default function CategoryPage() {
             {loading ? (
               <div className="loading">
                 <div className="loading-spinner"></div>
-                <div>NacÌtavam produkty...</div>
+                <div>Naƒç√≠tavam produkty...</div>
               </div>
             ) : products.length === 0 ? (
               <div className="empty">
-                <div style={{ fontSize: 48, marginBottom: 16 }}>??</div>
-                <div>éiadne produkty v tejto kategÛrii</div>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>üì¶</div>
+                <div>≈Ωiadne produkty v tejto kateg√≥rii</div>
               </div>
             ) : (
               <>
@@ -335,7 +335,7 @@ export default function CategoryPage() {
                         {p.image_url ? (
                           <img src={p.image_url} alt={p.title} />
                         ) : (
-                          <span style={{ color: '#ccc', fontSize: 48 }}>??</span>
+                          <span style={{ color: '#ccc', fontSize: 48 }}>üì∑</span>
                         )}
                       </div>
                       <div className="product-info">
@@ -354,7 +354,7 @@ export default function CategoryPage() {
                       onClick={() => setPage(p => Math.max(1, p - 1))}
                       disabled={page === 1}
                     >
-                      ? Predch·dzaj˙ca
+                      ‚Üê Predch√°dzaj√∫ca
                     </button>
                     <span className="page-info">{page} / {totalPages}</span>
                     <button 
@@ -362,7 +362,7 @@ export default function CategoryPage() {
                       onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                       disabled={page === totalPages}
                     >
-                      Dalöia ?
+                      ƒéal≈°ia ‚Üí
                     </button>
                   </div>
                 )}

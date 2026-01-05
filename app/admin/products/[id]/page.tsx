@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, use } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
-import { api, formatPrice } from '@/lib/api'
+import { api } from '@/lib/api'
 
 interface Product {
   id: string
@@ -15,7 +15,7 @@ interface Product {
   sku?: string
   brand?: string
   image_url?: string
-  images?: string[]
+  images?: { id: string; url: string; alt?: string; position: number; is_main: boolean }[]
   affiliate_url?: string
   category_id?: string
   price_min: number
@@ -34,8 +34,9 @@ interface Category {
   parent_id?: string
 }
 
-export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
+export default function EditProductPage() {
+  const params = useParams()
+  const id = params.id as string
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -66,8 +67,10 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   })
 
   useEffect(() => {
-    loadProduct()
-    loadCategories()
+    if (id) {
+      loadProduct()
+      loadCategories()
+    }
   }, [id])
 
   async function loadProduct() {
@@ -123,13 +126,11 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
       const result = await api.uploadImage(files[i])
       if (result?.url) {
         if (!product.image_url) {
-          // First image becomes main image
           setProduct(prev => ({ ...prev, image_url: result.url }))
         } else {
-          // Add to gallery
           setProduct(prev => ({ 
             ...prev, 
-            images: [...(prev.images || []), result.url] 
+            images: [...(prev.images || []), { id: '', url: result.url, alt: '', position: 0, is_main: false }] 
           }))
         }
       }
@@ -140,16 +141,14 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
   function removeImage(index: number) {
     if (index === -1) {
-      // Remove main image, promote first gallery image
       const newImages = [...(product.images || [])]
-      const newMain = newImages.shift() || ''
+      const newMain = newImages.shift()
       setProduct(prev => ({
         ...prev,
-        image_url: newMain,
+        image_url: newMain?.url || '',
         images: newImages
       }))
     } else {
-      // Remove from gallery
       setProduct(prev => ({
         ...prev,
         images: (prev.images || []).filter((_, i) => i !== index)
@@ -162,17 +161,19 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
     const newMain = newImages[index]
     newImages.splice(index, 1)
     if (product.image_url) {
-      newImages.unshift(product.image_url)
+      newImages.unshift({ id: '', url: product.image_url, alt: '', position: 0, is_main: false })
     }
     setProduct(prev => ({
       ...prev,
-      image_url: newMain,
+      image_url: newMain.url,
       images: newImages
     }))
   }
 
-  // All images including main
-  const allImages = [product.image_url, ...(product.images || [])].filter(Boolean) as string[]
+  const allImages = [
+    product.image_url ? { url: product.image_url, is_main: true } : null,
+    ...(product.images || [])
+  ].filter(Boolean) as { url: string; is_main?: boolean }[]
 
   if (loading) {
     return (
@@ -189,53 +190,50 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         .edit-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
         .edit-title { font-size: 24px; font-weight: 700; color: #1f2937; margin: 0; }
         .edit-actions { display: flex; gap: 12px; }
-        .btn { padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
+        .btn { padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; border: none; }
         .btn-danger { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
         .btn-danger:hover { background: #dc2626; color: #fff; }
         .btn-secondary { background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; }
         .btn-secondary:hover { border-color: #9ca3af; }
-        .btn-primary { background: linear-gradient(135deg, #c9a87c, #b8956e); color: #fff; border: none; }
+        .btn-primary { background: linear-gradient(135deg, #c9a87c, #b8956e); color: #fff; }
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(201,168,124,0.3); }
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         
-        /* Tabs */
         .tabs { display: flex; gap: 4px; margin-bottom: 24px; background: #f3f4f6; padding: 4px; border-radius: 12px; }
         .tab { padding: 12px 20px; background: transparent; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; color: #6b7280; cursor: pointer; display: flex; align-items: center; gap: 8px; }
         .tab:hover { color: #374151; }
         .tab.active { background: #fff; color: #c9a87c; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         
-        /* Form */
         .form-card { background: #fff; border-radius: 16px; padding: 24px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
         .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
         .form-group { margin-bottom: 20px; }
         .form-group.full { grid-column: 1 / -1; }
         .form-label { display: block; font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 8px; }
-        .form-input { width: 100%; padding: 12px 16px; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 14px; transition: all 0.2s; }
+        .form-input { width: 100%; padding: 12px 16px; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 14px; transition: all 0.2s; box-sizing: border-box; }
         .form-input:focus { outline: none; border-color: #c9a87c; box-shadow: 0 0 0 3px rgba(201,168,124,0.1); }
         .form-textarea { min-height: 150px; resize: vertical; }
         .form-select { appearance: none; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L2 4h8z'/%3E%3C/svg%3E") no-repeat right 16px center; padding-right: 40px; }
         .form-checkbox { display: flex; align-items: center; gap: 10px; cursor: pointer; }
-        .form-checkbox input { width: 20px; height: 20px; accent-color: #c9a87c; }
+        .form-checkbox input { width: 18px; height: 18px; accent-color: #c9a87c; }
         
-        /* Images */
         .images-section { }
-        .images-upload { border: 2px dashed #e5e7eb; border-radius: 16px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.2s; margin-bottom: 24px; }
-        .images-upload:hover { border-color: #c9a87c; background: #faf8f5; }
-        .images-upload-icon { font-size: 48px; margin-bottom: 12px; }
-        .images-upload-text { font-size: 14px; color: #6b7280; }
-        .images-upload-formats { font-size: 12px; color: #9ca3af; margin-top: 8px; }
+        .images-upload { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; border: 2px dashed #e5e7eb; border-radius: 12px; cursor: pointer; transition: all 0.2s; margin-bottom: 20px; }
+        .images-upload:hover { border-color: #c9a87c; background: #fefbf6; }
         .images-upload input { display: none; }
+        .images-upload-icon { font-size: 40px; margin-bottom: 12px; }
+        .images-upload-text { font-size: 14px; color: #374151; font-weight: 500; }
+        .images-upload-formats { font-size: 12px; color: #9ca3af; margin-top: 8px; }
         
         .images-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
-        .image-item { position: relative; aspect-ratio: 1; border-radius: 12px; overflow: hidden; background: #f9fafb; }
-        .image-item img { width: 100%; height: 100%; object-fit: cover; }
-        .image-item.main { border: 3px solid #c9a87c; }
-        .image-badge { position: absolute; top: 8px; left: 8px; padding: 4px 8px; background: #c9a87c; color: #fff; font-size: 11px; font-weight: 600; border-radius: 6px; }
-        .image-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; }
-        .image-btn { width: 28px; height: 28px; border-radius: 6px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; }
-        .image-btn-main { background: #fff; color: #c9a87c; }
-        .image-btn-delete { background: #fff; color: #dc2626; }
-        .image-btn:hover { transform: scale(1.1); }
+        .image-item { position: relative; aspect-ratio: 1; border-radius: 12px; overflow: hidden; background: #f9fafb; border: 2px solid transparent; }
+        .image-item.main { border-color: #c9a87c; }
+        .image-item img { width: 100%; height: 100%; object-fit: contain; }
+        .image-badge { position: absolute; top: 8px; left: 8px; background: #c9a87c; color: #fff; font-size: 10px; padding: 4px 8px; border-radius: 4px; font-weight: 600; }
+        .image-actions { position: absolute; bottom: 8px; right: 8px; display: flex; gap: 4px; opacity: 0; transition: opacity 0.2s; }
+        .image-item:hover .image-actions { opacity: 1; }
+        .image-btn { width: 28px; height: 28px; border-radius: 6px; border: none; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+        .image-btn-main { background: #c9a87c; color: #fff; }
+        .image-btn-delete { background: #fee2e2; color: #dc2626; }
         
         .no-images { text-align: center; padding: 40px; color: #9ca3af; }
         .no-images-icon { font-size: 48px; margin-bottom: 12px; }
@@ -243,26 +241,25 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
 
       <div className="edit-page">
         <div className="edit-header">
-          <h1 className="edit-title">Upraviť produkt</h1>
+          <h1 className="edit-title">✏️ Upraviť produkt</h1>
           <div className="edit-actions">
             <button className="btn btn-danger" onClick={handleDelete}>🗑️ Vymazať</button>
             <Link href="/admin/products" className="btn btn-secondary">← Späť</Link>
             <button className="btn btn-primary" onClick={handleSubmit} disabled={saving}>
-              {saving ? '⏳ Ukladám...' : '💾 Uložiť zmeny'}
+              {saving ? '⏳ Ukladám...' : '💾 Uložiť'}
             </button>
           </div>
         </div>
 
-        {/* Tabs */}
         <div className="tabs">
           <button className={`tab ${activeTab === 'basic' ? 'active' : ''}`} onClick={() => setActiveTab('basic')}>
-            📝 Základné info
+            📝 Základné
           </button>
           <button className={`tab ${activeTab === 'images' ? 'active' : ''}`} onClick={() => setActiveTab('images')}>
             🖼️ Obrázky ({allImages.length})
           </button>
           <button className={`tab ${activeTab === 'attributes' ? 'active' : ''}`} onClick={() => setActiveTab('attributes')}>
-            📊 Atribúty
+            🏷️ Atribúty
           </button>
           <button className={`tab ${activeTab === 'seo' ? 'active' : ''}`} onClick={() => setActiveTab('seo')}>
             🔍 SEO
@@ -270,7 +267,6 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         </div>
 
         <form onSubmit={handleSubmit}>
-          {/* Basic Info Tab */}
           {activeTab === 'basic' && (
             <div className="form-card">
               <div className="form-grid">
@@ -292,7 +288,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                     value={product.category_id || ''}
                     onChange={e => setProduct(prev => ({ ...prev, category_id: e.target.value }))}
                   >
-                    <option value="">-- Vybrať kategóriu --</option>
+                    <option value="">-- Vyberte kategóriu --</option>
                     {categories.map(cat => (
                       <option key={cat.id} value={cat.id}>{cat.name}</option>
                     ))}
@@ -400,11 +396,9 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             </div>
           )}
 
-          {/* Images Tab */}
           {activeTab === 'images' && (
             <div className="form-card">
               <div className="images-section">
-                {/* Upload Area */}
                 <label className="images-upload">
                   <input 
                     type="file" 
@@ -415,29 +409,25 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                   />
                   <div className="images-upload-icon">📷</div>
                   <div className="images-upload-text">
-                    {uploadingImages ? 'Nahrávam...' : 'Pretiahnite obrázky sem alebo kliknite pre nahratie'}
+                    {uploadingImages ? 'Nahrávam...' : 'Kliknite pre nahratie obrázkov'}
                   </div>
-                  <div className="images-upload-formats">Podporované formáty: JPG, PNG, WebP, GIF (max 10MB)</div>
+                  <div className="images-upload-formats">JPG, PNG, WebP, GIF (max 10MB)</div>
                 </label>
 
-                {/* Images Grid */}
                 {allImages.length > 0 ? (
                   <div className="images-grid">
-                    {/* Main Image */}
                     {product.image_url && (
                       <div className="image-item main">
-                        <img src={product.image_url} alt="Hlavný obrázok" />
+                        <img src={product.image_url} alt="Hlavný" />
                         <span className="image-badge">Hlavný</span>
                         <div className="image-actions">
                           <button type="button" className="image-btn image-btn-delete" onClick={() => removeImage(-1)}>×</button>
                         </div>
                       </div>
                     )}
-                    
-                    {/* Gallery Images */}
                     {(product.images || []).map((img, index) => (
                       <div key={index} className="image-item">
-                        <img src={img} alt={`Obrázok ${index + 2}`} />
+                        <img src={typeof img === 'string' ? img : img.url} alt={`Obrázok ${index + 2}`} />
                         <div className="image-actions">
                           <button type="button" className="image-btn image-btn-main" onClick={() => setAsMainImage(index)} title="Nastaviť ako hlavný">★</button>
                           <button type="button" className="image-btn image-btn-delete" onClick={() => removeImage(index)}>×</button>
@@ -455,7 +445,6 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             </div>
           )}
 
-          {/* Attributes Tab */}
           {activeTab === 'attributes' && (
             <div className="form-card">
               <div className="form-grid">
@@ -482,7 +471,6 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             </div>
           )}
 
-          {/* SEO Tab */}
           {activeTab === 'seo' && (
             <div className="form-card">
               <div className="form-group">
@@ -503,7 +491,6 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
                   rows={3}
                   value={product.meta_description || ''}
                   onChange={e => setProduct(prev => ({ ...prev, meta_description: e.target.value }))}
-                  placeholder="Automaticky generovaný z popisu produktu"
                 />
               </div>
 
